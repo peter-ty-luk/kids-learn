@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+PORT="${PORT:-8000}"
+echo "Starting Mini Kart Racing on http://localhost:${PORT}"
+exec python3 -m http.server "$PORT"

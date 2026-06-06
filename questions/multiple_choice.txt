@@ -1,0 +1,15 @@
+What is 3 + 5?|8|6,8,10,12
+What is 12 - 7?|5|3,5,8,10
+What is 4 x 6?|24|18,24,30,36
+What is 15 / 3?|5|3,5,7,9
+What is 9 + 8?|17|15,16,17,18
+What is 100 - 37?|63|53,63,73,83
+What is 7 x 8?|56|48,56,64,72
+What is 81 / 9?|9|7,8,9,10
+What is 6 x 7?|42|35,42,48,56
+What is 25 + 38?|63|53,63,73,83
+What color is the sky?|blue|red,blue,green,yellow
+How many legs does a dog have?|4|2,3,4,6
+What planet do we live on?|earth|mars,earth,venus,jupiter
+What shape has 3 sides?|triangle|square,triangle,circle,pentagon
+What is the largest ocean?|pacific|atlantic,pacific,indian,arctic
