@@ -1,0 +1,26 @@
+[
+  {
+    "id": "fr-001",
+    "topic": "fractions",
+    "prompt": "Add these fractions.",
+    "math": "\\frac{1}{2} + \\frac{1}{4}",
+    "answer": "3/4",
+    "accept": ["3/4", "0.75"],
+    "time": 20,
+    "difficulty": 3,
+    "explain": "1/2 = 2/4, so 2/4 + 1/4 = 3/4."
+  },
+  {
+    "id": "fr-002",
+    "topic": "fractions",
+    "prompt": "What is the sum?",
+    "math": "\\sum_{i=1}^{4} i",
+    "answer": "10",
+    "choices": ["6", "8", "10", "12"],
+    "time": 20,
+    "difficulty": 3,
+    "explain": "1 + 2 + 3 + 4 = 10."
+  },
+
+  { "id": "fr-gen-add", "topic": "fractions", "gen": "fractionAdd", "time": 18, "difficulty": 3 }
+]

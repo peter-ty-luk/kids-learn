@@ -1,0 +1,9 @@
+[
+  { "id": "ge-001", "topic": "general", "prompt": "What color is the sky?",         "answer": "blue",     "choices": ["red", "blue", "green", "yellow"],           "time": 3, "difficulty": 1 },
+  { "id": "ge-002", "topic": "general", "prompt": "How many legs does a dog have?",  "answer": "4",        "choices": ["2", "3", "4", "6"],                         "time": 3, "difficulty": 1 },
+  { "id": "ge-003", "topic": "general", "prompt": "What planet do we live on?",      "answer": "earth",    "choices": ["mars", "earth", "venus", "jupiter"],        "time": 4, "difficulty": 1 },
+  { "id": "ge-004", "topic": "general", "prompt": "What shape has 3 sides?",         "answer": "triangle", "choices": ["square", "triangle", "circle", "pentagon"], "time": 4, "difficulty": 1 },
+  { "id": "ge-005", "topic": "general", "prompt": "What is the largest ocean?",      "answer": "pacific",  "choices": ["atlantic", "pacific", "indian", "arctic"],  "time": 5, "difficulty": 2 },
+  { "id": "ge-006", "topic": "general", "prompt": "How many days in a week?",        "answer": "7",        "choices": ["5", "6", "7", "8"],                         "time": 3, "difficulty": 1 },
+  { "id": "ge-007", "topic": "general", "prompt": "Red + blue makes what color?",    "answer": "purple",   "choices": ["green", "orange", "purple", "brown"],       "time": 4, "difficulty": 1 }
+]

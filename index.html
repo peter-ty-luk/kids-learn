@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mini Kart Racing</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏎️</text></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
@@ -18,7 +19,7 @@
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
             pointer-events: none;
         }
-        #hud .lap { font-size: 28px; font-weight: bold; }
+        #hud .lap { font-size: 44px; font-weight: bold; }
         #hud .bar-bg {
             width: 200px; height: 12px;
             background: rgba(255,255,255,0.2);
@@ -30,30 +31,65 @@
             transition: width 0.1s;
         }
         #boostBar { background: #ff4444; }
+        #ratingBar { background: #44cc44; }
+        /* Stink-cloud blindness: covers the road but sits under the HUD overlays. */
+        #fog-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.45s;
+            background:
+                radial-gradient(ellipse at 30% 40%, rgba(150,170,80,0.9), rgba(110,130,55,0.0) 60%),
+                radial-gradient(ellipse at 70% 60%, rgba(130,150,70,0.9), rgba(110,130,55,0.0) 65%),
+                radial-gradient(ellipse at 50% 50%, rgba(120,140,60,0.98), rgba(95,115,50,0.92));
+        }
         #oilBar { background: #44cc44; }
 
         #speed {
             position: absolute;
-            bottom: 30px;
-            right: 30px;
+            bottom: 28px;
+            right: 36px;
             color: #fff;
-            font-size: 48px;
+            font-size: 108px;
             font-weight: bold;
-            text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.85);
             pointer-events: none;
         }
-        #speed span { font-size: 20px; opacity: 0.7; }
+        #speed span { font-size: 42px; opacity: 0.75; }
 
         #minimap {
             position: absolute;
             bottom: 20px;
             left: 20px;
-            width: 200px;
-            height: 200px;
-            border: 2px solid rgba(255,255,255,0.5);
-            border-radius: 8px;
+            width: 300px;
+            height: 300px;
+            border: 3px solid rgba(255,255,255,0.6);
+            border-radius: 10px;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.4);
             pointer-events: none;
         }
+
+        #corner-hud {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 12px;
+            pointer-events: none;
+        }
+        #rank-display {
+            color: #fff;
+            font-size: 38px;
+            font-weight: bold;
+            text-shadow: 2px 2px 6px rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.45);
+            border: 2px solid rgba(255,255,255,0.35);
+            border-radius: 14px;
+            padding: 12px 28px;
+        }
+        #rank-display #position { font-size: 60px; color: #ffd93b; }
 
         #instructions {
             position: absolute;
@@ -78,22 +114,60 @@
             pointer-events: none;
         }
 
-        #item-indicator {
+        /* Scales with viewport width so it stays compact on small screens. */
+        #road-question {
             position: absolute;
-            top: 50%;
+            top: clamp(6px, 1.5vw, 18px);
             left: 50%;
-            transform: translate(-50%, -50%) translateY(60px);
-            width: 64px; height: 64px;
-            background: rgba(0,0,0,0.6);
-            border: 3px solid rgba(255,255,255,0.8);
-            border-radius: 12px;
+            transform: translateX(-50%);
+            max-width: min(94vw, 800px);
+            background: rgba(14,18,44,0.88);
+            border: clamp(2px, 0.5vw, 4px) solid #ffd93b;
+            border-radius: clamp(12px, 2.2vw, 26px);
+            padding: clamp(8px, 1.8vw, 28px) clamp(14px, 4vw, 52px) clamp(10px, 2vw, 30px);
+            text-align: center;
+            color: #fff;
+            pointer-events: none;
+            display: none;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+        }
+        #road-question .rq-label {
+            font-size: clamp(12px, 1.8vw, 26px); letter-spacing: clamp(2px, 0.4vw, 5px); color: #ffd93b; font-weight: 700; opacity: .9;
+        }
+        #road-question .rq-text { font-size: clamp(18px, 4.4vw, 62px); font-weight: 800; margin: clamp(4px, 0.8vw, 8px) 0 clamp(8px, 1.6vw, 20px); }
+        #road-question .rq-choices { display: flex; gap: clamp(6px, 1.8vw, 26px); justify-content: center; flex-wrap: wrap; }
+        #road-question .rq-choices span {
+            background: rgba(255,255,255,0.14); border: 2px solid rgba(255,255,255,0.25);
+            border-radius: clamp(8px, 1.3vw, 18px); padding: clamp(6px, 1vw, 14px) clamp(14px, 2.6vw, 36px); font-weight: 700; font-size: clamp(15px, 3.6vw, 50px);
+        }
+
+        #road-feedback {
+            position: absolute;
+            top: 24%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 42px;
+            font-weight: bold;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.85);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            white-space: nowrap;
+        }
+
+        #item-indicator {
+            width: 120px; height: 120px;
+            background: rgba(0,0,0,0.55);
+            border: 4px solid rgba(255,255,255,0.85);
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 36px;
+            font-size: 70px;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.2s;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
         }
 
         #quiz-overlay {
@@ -230,28 +304,673 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
         }
+
+        /* "Choose your ride" scales with the screen via clamp()/vmin, so the
+           text and cards stay readable on small laptops AND large monitors.
+           overflow-y + safe centering keep it usable if it ever overflows. */
+        #car-select-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a2a 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: safe center;
+            overflow-y: auto;
+            padding: clamp(16px, 3vmin, 48px);
+            z-index: 200;
+            gap: clamp(12px, 1.8vmin, 28px);
+        }
+
+        #car-select-overlay h1 {
+            color: #fff;
+            font-size: clamp(32px, 5.2vmin, 68px);
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(85,170,255,0.5);
+            margin-bottom: clamp(4px, 0.8vmin, 14px);
+        }
+
+        #car-select-overlay .subtitle {
+            color: rgba(255,255,255,0.5);
+            font-size: clamp(14px, 1.9vmin, 26px);
+            margin-bottom: clamp(4px, 0.8vmin, 14px);
+        }
+
+        #car-grid {
+            display: flex;
+            gap: clamp(12px, 1.6vmin, 28px);
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: min(97vw, 2200px);
+        }
+
+        .car-card {
+            background: rgba(255,255,255,0.05);
+            border: 3px solid rgba(255,255,255,0.15);
+            border-radius: clamp(12px, 1.6vmin, 22px);
+            padding: clamp(14px, 1.9vmin, 30px);
+            width: clamp(150px, 16.5vmin, 250px);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            color: #fff;
+        }
+        .car-card:hover {
+            background: rgba(85,170,255,0.15);
+            border-color: rgba(85,170,255,0.6);
+            transform: translateY(-4px);
+        }
+        .car-card.selected {
+            background: rgba(85,170,255,0.25);
+            border-color: #55aaff;
+            box-shadow: 0 0 30px rgba(85,170,255,0.3);
+        }
+
+        .car-card .car-preview {
+            width: 64%;
+            aspect-ratio: 5 / 3;
+            height: auto;
+            margin: 0 auto clamp(8px, 1.2vmin, 18px);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .car-card .car-name {
+            font-size: clamp(17px, 2.2vmin, 32px);
+            font-weight: bold;
+            margin-bottom: clamp(5px, 0.9vmin, 12px);
+        }
+
+        .car-card .car-desc {
+            font-size: clamp(11px, 1.4vmin, 19px);
+            color: rgba(255,255,255,0.5);
+            margin-bottom: clamp(8px, 1.3vmin, 18px);
+            line-height: 1.3;
+        }
+
+        .car-card .stat-row {
+            display: flex;
+            align-items: center;
+            gap: clamp(5px, 0.8vmin, 10px);
+            margin-bottom: clamp(4px, 0.6vmin, 8px);
+            font-size: clamp(11px, 1.4vmin, 19px);
+        }
+        .car-card .stat-label {
+            width: 5.2em;
+            text-align: right;
+            color: rgba(255,255,255,0.6);
+        }
+        .car-card .stat-bar-bg {
+            flex: 1;
+            height: clamp(6px, 0.9vmin, 12px);
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .car-card .stat-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        #track-select-wrap {
+            margin-top: clamp(10px, 1.6vmin, 24px);
+        }
+        #track-grid {
+            display: flex;
+            gap: clamp(10px, 1.3vmin, 20px);
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: clamp(5px, 0.8vmin, 12px);
+            max-width: min(96vw, 1500px);
+        }
+        .track-card {
+            background: rgba(255,255,255,0.06);
+            border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            padding: clamp(8px, 1.1vmin, 16px) clamp(14px, 2vmin, 30px);
+            cursor: pointer;
+            transition: all 0.15s;
+            min-width: clamp(120px, 14vmin, 200px);
+            text-align: center;
+        }
+        .track-card:hover { border-color: rgba(120,200,255,0.6); }
+        .track-card.selected {
+            border-color: #55ccff;
+            background: rgba(85,170,255,0.18);
+            box-shadow: 0 0 18px rgba(85,200,255,0.4);
+        }
+        .track-card .tc-name { font-weight: bold; font-size: clamp(15px, 1.9vmin, 26px); color: #fff; }
+        .track-card .tc-desc { font-size: clamp(12px, 1.45vmin, 20px); color: rgba(255,255,255,0.6); margin-top: 3px; }
+
+        #start-race-btn {
+            margin-top: clamp(14px, 2.2vmin, 32px);
+            background: linear-gradient(135deg, #2288ff, #55aaff);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: clamp(12px, 1.7vmin, 22px) clamp(40px, 6vmin, 90px);
+            font-size: clamp(20px, 2.6vmin, 36px);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 20px rgba(85,170,255,0.3);
+        }
+        #start-race-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(85,170,255,0.5);
+        }
+        #start-race-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Front page + room scale with the screen via clamp()/vmin, and the
+           overlay scrolls if its content (now incl. chat) is taller than the view. */
+        #lobby-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 50%, #0a0a2a 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: safe center;
+            overflow-y: auto;
+            padding: clamp(16px, 3vmin, 48px);
+            z-index: 150;
+            gap: clamp(10px, 2vmin, 24px);
+        }
+
+        #lobby-overlay h1 {
+            color: #fff;
+            font-size: clamp(30px, 6vmin, 66px);
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(85,170,255,0.5);
+            margin-bottom: clamp(8px, 1.6vmin, 22px);
+        }
+
+        #lobby-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: clamp(12px, 2vmin, 24px);
+        }
+
+        .lobby-section {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 16px;
+            padding: clamp(18px, 3vmin, 34px);
+            width: min(92vw, 440px);
+            text-align: center;
+            color: #fff;
+        }
+
+        .lobby-section h2 {
+            font-size: clamp(18px, 2.7vmin, 32px);
+            margin-bottom: clamp(10px, 1.6vmin, 18px);
+            color: #55aaff;
+        }
+
+        .lobby-btn {
+            background: linear-gradient(135deg, #2288ff, #55aaff);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: clamp(10px, 1.5vmin, 16px) clamp(22px, 3.4vmin, 40px);
+            font-size: clamp(15px, 2.1vmin, 26px);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 10px;
+        }
+        .lobby-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(85,170,255,0.4);
+        }
+        .lobby-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        #join-input {
+            font-size: clamp(18px, 2.6vmin, 30px);
+            padding: clamp(10px, 1.4vmin, 16px) 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            text-align: center;
+            width: min(60vw, 220px);
+            margin: 10px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+        }
+        #join-input:focus {
+            outline: none;
+            border-color: #55aaff;
+        }
+
+        #room-list-wrap { margin-top: clamp(12px, 1.8vmin, 18px); }
+        .room-list-title {
+            font-size: clamp(11px, 1.6vmin, 16px);
+            color: rgba(255,255,255,0.4);
+            margin-bottom: clamp(8px, 1.4vmin, 12px);
+        }
+        #room-list { display: flex; flex-direction: column; gap: 8px; }
+        .room-item {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px;
+            background: rgba(85,170,255,0.12);
+            border: 2px solid rgba(85,170,255,0.45);
+            border-radius: 12px;
+            padding: clamp(10px, 1.5vmin, 16px) clamp(12px, 2vmin, 20px);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .room-item:hover { background: rgba(85,170,255,0.28); transform: translateY(-1px); }
+        .room-item .ri-name {
+            font-weight: bold;
+            font-size: clamp(15px, 2vmin, 22px);
+            color: #fff; text-align: left; flex: 1;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .room-item .ri-meta { font-size: clamp(12px, 1.6vmin, 17px); color: rgba(255,255,255,0.6); }
+        .room-item .ri-join {
+            background: linear-gradient(135deg, #2288ff, #55aaff);
+            color: #fff; border: none; border-radius: 8px;
+            padding: clamp(6px,1vmin,10px) clamp(12px,2vmin,18px);
+            font-weight: bold; font-size: clamp(13px, 1.7vmin, 18px);
+            pointer-events: none; /* the whole row is the click target */
+        }
+        .room-list-empty {
+            font-size: clamp(12px, 1.7vmin, 17px);
+            color: rgba(255,255,255,0.35);
+            padding: clamp(6px, 1vmin, 10px);
+        }
+        #manual-join { margin-top: clamp(12px, 1.8vmin, 18px); }
+
+        /* --- Cup (Grand Prix) standings overlay --- */
+        #cup-standings-overlay {
+            position: absolute; inset: 0; z-index: 320;
+            background: rgba(6, 10, 22, 0.94);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #fff; text-align: center; padding: 4vmin; overflow-y: auto;
+        }
+        #cup-standings-overlay .cup-head {
+            font-size: clamp(22px, 4.2vmin, 52px); font-weight: bold;
+            color: #ffd93b; text-shadow: 0 0 18px rgba(255,217,59,0.5);
+            margin-bottom: clamp(6px, 1.2vmin, 14px);
+        }
+        #cup-standings-overlay .cup-sub {
+            font-size: clamp(13px, 2vmin, 22px); color: rgba(255,255,255,0.6);
+            margin-bottom: clamp(14px, 2.4vmin, 28px);
+        }
+        #cup-standings-overlay .cup-board {
+            width: min(94vw, 520px); display: flex; flex-direction: column; gap: 8px;
+            margin-bottom: clamp(16px, 2.6vmin, 30px);
+        }
+        #cup-standings-overlay .cup-row {
+            display: flex; align-items: center; gap: 12px;
+            background: rgba(255,255,255,0.06);
+            border: 2px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: clamp(8px,1.4vmin,15px) clamp(12px,2vmin,20px);
+            font-size: clamp(15px, 2.2vmin, 26px);
+        }
+        #cup-standings-overlay .cup-row.lead {
+            border-color: #ffd93b; background: rgba(255,217,59,0.14);
+        }
+        #cup-standings-overlay .cup-row.me { box-shadow: inset 0 0 0 2px rgba(85,170,255,0.6); }
+        #cup-standings-overlay .cup-pos { font-weight: bold; width: 2.4em; text-align: left; color: #ffd93b; }
+        #cup-standings-overlay .cup-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #cup-standings-overlay .cup-gain { color: rgba(255,255,255,0.45); font-size: 0.8em; margin-right: 6px; }
+        #cup-standings-overlay .cup-pts { font-weight: bold; min-width: 3.2em; text-align: right; }
+        #cup-standings-overlay .cup-note { font-size: clamp(13px, 2vmin, 22px); color: rgba(255,255,255,0.6); margin-top: 6px; }
+        #cup-standings-overlay .cup-champ {
+            font-size: clamp(20px, 3.6vmin, 44px); font-weight: bold; color: #ffd93b;
+            margin-bottom: clamp(14px, 2.4vmin, 28px);
+        }
+
+        #room-info {
+            display: none;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(85,170,255,0.4);
+            border-radius: 16px;
+            padding: clamp(18px, 3vmin, 34px);
+            width: min(94vw, 560px);
+            text-align: center;
+            color: #fff;
+        }
+
+        #room-info h2 {
+            font-size: clamp(20px, 3.1vmin, 36px);
+            margin-bottom: clamp(6px, 1vmin, 12px);
+        }
+
+        #room-name-row {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            margin-bottom: clamp(4px, 0.8vmin, 10px);
+        }
+        #room-name {
+            font-size: clamp(24px, 4.4vmin, 46px);
+            font-weight: bold; color: #fff;
+            text-shadow: 0 0 16px rgba(85,170,255,0.4);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            max-width: 80%;
+        }
+        #room-rename-btn {
+            background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 8px; cursor: pointer; color: #fff;
+            font-size: clamp(14px, 2vmin, 22px); padding: 4px 10px; line-height: 1;
+        }
+        #room-rename-btn:hover { background: rgba(255,255,255,0.22); }
+        #room-rename-edit {
+            display: flex; gap: 8px; justify-content: center; align-items: center;
+            flex-wrap: wrap; margin-bottom: clamp(8px, 1.4vmin, 14px);
+        }
+        #room-name-input {
+            font-size: clamp(15px, 2.2vmin, 24px); padding: clamp(7px,1vmin,12px) 14px;
+            border-radius: 10px; border: 2px solid rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.1); color: #fff; text-align: center;
+            width: min(60vw, 240px);
+        }
+        #room-name-input:focus { outline: none; border-color: #55aaff; }
+        #room-rename-edit .lobby-btn { margin: 0; padding: clamp(7px,1vmin,12px) clamp(14px,2vmin,22px); font-size: clamp(13px,1.8vmin,20px); }
+        #room-code-line {
+            font-size: clamp(12px, 1.7vmin, 20px); color: rgba(255,255,255,0.55);
+            margin-bottom: clamp(10px, 1.8vmin, 18px);
+        }
+        #room-code {
+            font-weight: bold; color: #55aaff; letter-spacing: 2px;
+            text-shadow: 0 0 12px rgba(85,170,255,0.5);
+        }
+
+        #players-list {
+            text-align: left;
+            margin: clamp(12px, 2vmin, 22px) 0;
+        }
+
+        .player-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: clamp(9px, 1.4vmin, 16px) clamp(12px, 1.8vmin, 18px);
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-item .player-name {
+            font-size: clamp(15px, 2.1vmin, 26px);
+            font-weight: bold;
+        }
+
+        .player-item .player-status {
+            font-size: clamp(12px, 1.6vmin, 20px);
+            color: rgba(255,255,255,0.5);
+        }
+
+        .player-item.ready .player-status {
+            color: #44cc44;
+        }
+
+        /* Next-track banner — every player sees the host's selected course. */
+        #next-track {
+            display: none;
+            font-size: clamp(15px, 2.1vmin, 26px);
+            font-weight: bold;
+            color: #ffd93b;
+            background: rgba(255,217,59,0.08);
+            border: 1px solid rgba(255,217,59,0.35);
+            border-radius: 10px;
+            padding: clamp(8px, 1.3vmin, 14px);
+            margin: clamp(8px, 1.4vmin, 16px) 0;
+        }
+        #next-track .nt-label { color: rgba(255,255,255,0.55); font-size: 0.7em; font-weight: 600; }
+
+        /* Host's in-room track picker. */
+        #room-track {
+            display: none;
+            width: 100%;
+            margin: 0 0 clamp(8px, 1.4vmin, 16px);
+            font-size: clamp(14px, 1.9vmin, 24px);
+            font-weight: bold;
+            padding: clamp(9px, 1.4vmin, 15px) 14px;
+            border-radius: 10px;
+            border: 2px solid rgba(85,170,255,0.5);
+            background: #16203a;
+            color: #fff;
+            cursor: pointer;
+            outline: none;
+        }
+        #room-track:focus { border-color: #55aaff; }
+
+        /* Room chat */
+        #chat-panel { margin-top: clamp(10px, 1.8vmin, 18px); text-align: left; }
+        #chat-messages {
+            height: clamp(90px, 16vmin, 180px);
+            overflow-y: auto;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            padding: clamp(8px, 1.2vmin, 14px);
+            font-size: clamp(13px, 1.7vmin, 22px);
+            line-height: 1.45;
+        }
+        .chat-msg { margin: 2px 0; word-break: break-word; }
+        .chat-msg .cm-name { font-weight: bold; color: #55aaff; }
+        .chat-msg.me .cm-name { color: #67d6a6; }
+        .chat-msg.sys { color: rgba(255,255,255,0.45); font-style: italic; }
+        #chat-row { display: flex; gap: 8px; margin-top: 8px; }
+        #chat-input {
+            flex: 1; min-width: 0;
+            font-size: clamp(14px, 1.9vmin, 22px);
+            padding: clamp(8px, 1.2vmin, 14px) 14px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            color: #fff; outline: none;
+        }
+        #chat-input:focus { border-color: #55aaff; }
+        #chat-send { margin: 0; padding: clamp(8px,1.2vmin,14px) clamp(16px,2.4vmin,28px); }
+
+        #lobby-error {
+            color: #ff4444;
+            font-size: clamp(13px, 1.7vmin, 22px);
+            margin: 10px 0;
+            min-height: 20px;
+        }
+
+        #name-input {
+            font-size: clamp(15px, 2.1vmin, 24px);
+            padding: clamp(9px, 1.3vmin, 14px) 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            text-align: center;
+            width: min(80vw, 280px);
+            margin-bottom: 15px;
+            outline: none;
+        }
+        #name-input:focus { border-color: #55aaff; }
+        #name-input::placeholder { color: rgba(255,255,255,0.3); }
+
+        #countdown-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 250;
+            gap: 20px;
+        }
+
+        #countdown-overlay h1 {
+            color: #fff;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(85,170,255,0.5);
+        }
+
+        #countdown-number {
+            font-size: 160px;
+            font-weight: bold;
+            color: #55aaff;
+            text-shadow: 0 0 60px rgba(85,170,255,0.6);
+            line-height: 1;
+        }
+
+        #countdown-players {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 700px;
+        }
+
+        .countdown-player {
+            background: rgba(255,255,255,0.08);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 16px 24px;
+            text-align: center;
+            color: #fff;
+            min-width: 120px;
+        }
+        .countdown-player .cp-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .countdown-player .cp-car {
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
 
-    <div id="hud">
+    <div id="lobby-overlay">
+        <h1>MINI KART RACING</h1>
+
+        <div id="lobby-menu">
+            <div class="lobby-section">
+                <h2>Your Name</h2>
+                <input type="text" id="name-input" placeholder="Enter your name" maxlength="16" />
+            </div>
+
+            <div class="lobby-section">
+                <h2>Play Online</h2>
+                <button class="lobby-btn" id="create-room-btn">➕ Create Room</button>
+
+                <div id="room-list-wrap">
+                    <div class="room-list-title">— or tap a game on your network —</div>
+                    <div id="room-list"><div class="room-list-empty">Looking for games…</div></div>
+                </div>
+
+                <div id="manual-join">
+                    <input type="text" id="join-input" placeholder="CODE" maxlength="6" />
+                    <button class="lobby-btn" id="join-room-btn">Join by Code</button>
+                </div>
+                <div id="lobby-error"></div>
+            </div>
+
+            <div class="lobby-section">
+                <h2>Play Offline</h2>
+                <button class="lobby-btn" id="offline-btn">Single Player</button>
+            </div>
+
+            <div class="lobby-section">
+                <h2>Practice</h2>
+                <a class="lobby-btn" id="practice-btn" href="test.html" style="display:inline-block;text-decoration:none;">📝 Practice Test</a>
+            </div>
+        </div>
+
+        <div id="room-info">
+            <div id="room-name-row">
+                <span id="room-name">Race Room</span>
+                <button id="room-rename-btn" title="Rename room" style="display:none">✏️</button>
+            </div>
+            <div id="room-rename-edit" style="display:none">
+                <input type="text" id="room-name-input" maxlength="24" placeholder="Room name" />
+                <button class="lobby-btn" id="room-rename-save">Save</button>
+                <button class="lobby-btn" id="room-rename-cancel">Cancel</button>
+            </div>
+            <div id="room-code-line">Code <span id="room-code"></span> · share to join</div>
+            <div id="players-list"></div>
+            <div id="next-track"><span class="nt-label">NEXT TRACK</span><br><span id="next-track-name">—</span></div>
+            <select id="room-track" title="Choose the track (host)" style="display:none"></select>
+            <button class="lobby-btn" id="lobby-pick-btn">🏎 Choose Your Ride</button>
+            <button class="lobby-btn" id="lobby-start-btn" style="display:none">Start Race</button>
+            <button class="lobby-btn" id="lobby-cup-btn" style="display:none">🏆 Start Cup (all tracks)</button>
+            <div id="lobby-waiting" style="margin-top: 15px; font-size: clamp(12px,1.6vmin,20px); color: rgba(255,255,255,0.5);">
+                Everyone picks a ride, then the host starts the race.
+            </div>
+
+            <div id="chat-panel">
+                <div id="chat-messages"></div>
+                <div id="chat-row">
+                    <input type="text" id="chat-input" placeholder="Message the room…" maxlength="160" />
+                    <button class="lobby-btn" id="chat-send">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="countdown-overlay">
+        <h1 id="countdown-title">GET READY!</h1>
+        <div id="countdown-number">5</div>
+        <div id="countdown-players"></div>
+    </div>
+
+    <div id="car-select-overlay" style="display:none">
+        <h1>CHOOSE YOUR RIDE</h1>
+        <div class="subtitle">Each vehicle has different stats. Pick wisely!</div>
+        <div id="car-grid"></div>
+        <div id="track-select-wrap">
+            <div class="subtitle" style="margin-top:6px">Course</div>
+            <div id="track-grid"></div>
+        </div>
+        <button id="start-race-btn" disabled>START RACE</button>
+        <button id="car-back-btn" class="lobby-btn" style="display:none;margin-top:14px;background:rgba(255,255,255,0.12)">← Back to Room</button>
+    </div>
+
+    <div id="fog-overlay"></div>
+
+    <div id="hud" style="display:none">
         <div class="lap">Lap <span id="lapNum">1</span> / 3</div>
         <div>Speed Boost</div>
         <div class="bar-bg"><div class="bar-fill" id="boostBar" style="width:100%"></div></div>
-        <div style="margin-top:6px;">Oil</div>
-        <div class="bar-bg"><div class="bar-fill" id="oilBar" style="width:100%"></div></div>
-        <div style="margin-top:8px;">Position: <span id="position">1st</span></div>
+        <div>Health</div>
+        <div class="bar-bg"><div class="bar-fill" id="ratingBar" style="width:100%"></div></div>
+    </div>
+
+    <div id="corner-hud" style="display:none">
+        <div id="rank-display"><span id="position">1st</span></div>
+        <div id="item-indicator"></div>
     </div>
 
     <div id="speed"><span id="speedVal">0</span> <span>km/h</span></div>
 
-    <canvas id="minimap" width="200" height="200"></canvas>
+    <canvas id="minimap" width="300" height="300"></canvas>
+
+    <div id="road-question">
+        <div class="rq-label">QUESTION</div>
+        <div class="rq-text"></div>
+        <div class="rq-choices"></div>
+    </div>
 
     <div id="countdown"></div>
-    <div id="item-indicator"></div>
+    <div id="road-feedback"></div>
 
-    <div id="instructions">WASD / Arrow Keys to drive &nbsp;|&nbsp; Space to use item &nbsp;|&nbsp; Drive into PIT to refill oil</div>
+    <div id="instructions">WASD / Arrow Keys to drive &nbsp;|&nbsp; Space to use item &nbsp;|&nbsp; Read the question, grab the box with the right answer!</div>
 
     <div id="quiz-overlay">
         <div id="quiz-box">
@@ -268,7 +987,12 @@
         </div>
     </div>
 
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <!-- Babylon is served LOCALLY (see lib/) so the game runs with no internet —
+         essential for LAN play; loading it from a CDN broke offline with
+         ERR_INTERNET_DISCONNECTED. Re-fetch with tools/fetch-babylon.sh. -->
+    <script src="lib/babylon.js"></script>
+    <script src="lib/babylonjs.loaders.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

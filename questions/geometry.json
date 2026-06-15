@@ -1,0 +1,37 @@
+[
+  {
+    "id": "geo-001",
+    "topic": "geometry",
+    "prompt": "Find the missing angle.",
+    "figure": { "kind": "triangle", "angles": [50, 60, "?"] },
+    "answer": "70",
+    "choices": ["60", "70", "80", "90"],
+    "time": 15,
+    "difficulty": 3,
+    "explain": "Angles in a triangle add to 180°: 180 − 50 − 60 = 70."
+  },
+  {
+    "id": "geo-002",
+    "topic": "geometry",
+    "prompt": "How many sides does this shape have?",
+    "figure": { "kind": "polygon", "sides": 6 },
+    "answer": "6",
+    "choices": ["4", "5", "6", "8"],
+    "time": 10,
+    "difficulty": 2
+  },
+  {
+    "id": "geo-003",
+    "topic": "geometry",
+    "prompt": "AB = 7 and BC = 5. How long is AC?",
+    "figure": { "kind": "segments", "parts": [["AB", 7], ["BC", 5]], "find": "AC" },
+    "answer": "12",
+    "choices": ["10", "12", "13", "35"],
+    "time": 15,
+    "difficulty": 3,
+    "explain": "AC = AB + BC = 7 + 5 = 12."
+  },
+
+  { "id": "geo-gen-tri", "topic": "geometry", "gen": "triangleAngle", "time": 15, "difficulty": 3 },
+  { "id": "geo-gen-poly", "topic": "geometry", "gen": "polygonSides", "time": 10, "difficulty": 2 }
+]

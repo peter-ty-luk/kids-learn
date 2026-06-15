@@ -1,0 +1,15 @@
+# Dependencies — regenerate with: npm install
+node_modules/
+
+# Claude Code local agent config / state
+.claude/
+
+# Logs & scratch
+*.log
+npm-debug.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*~

@@ -1,0 +1,36 @@
+[
+  {
+    "id": "mn-001",
+    "topic": "money",
+    "prompt": "How much money is this?",
+    "figure": { "kind": "coin", "coins": [25, 25, 10, 5] },
+    "answer": "65¢",
+    "accept": ["65", "65c", "65¢", "$0.65", "0.65"],
+    "time": 15,
+    "difficulty": 2,
+    "explain": "25 + 25 + 10 + 5 = 65 cents."
+  },
+  {
+    "id": "mn-002",
+    "topic": "money",
+    "prompt": "How much is this?",
+    "figure": { "kind": "coin", "coins": [25, 10, 10, 1] },
+    "answer": "46¢",
+    "choices": ["46¢", "45¢", "36¢", "21¢"],
+    "time": 15,
+    "difficulty": 2,
+    "explain": "25 + 10 + 10 + 1 = 46 cents."
+  },
+  {
+    "id": "mn-003",
+    "topic": "money",
+    "prompt": "Which is worth the most?",
+    "figure": { "kind": "coin", "coins": [25, 10, 5, 1] },
+    "answer": "quarter",
+    "choices": ["penny", "nickel", "dime", "quarter"],
+    "time": 10,
+    "difficulty": 1
+  },
+
+  { "id": "mn-gen-count", "topic": "money", "gen": "coinCount", "time": 15, "difficulty": 2 }
+]

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Practice Test</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="test.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+      background: linear-gradient(160deg, #eaf3ff, #f6ecff 60%, #fff4e8);
+      color: #243042;
+      min-height: 100vh;
+    }
+    #app { max-width: 720px; margin: 0 auto; padding: 18px 16px 60px; }
+    h1 { text-align: center; font-size: 30px; margin: 14px 0 4px; color: #2b3a55; }
+    .subtitle { text-align: center; color: #6a7790; margin-bottom: 18px; }
+    .card {
+      background: #fff; border-radius: 20px; padding: 22px;
+      box-shadow: 0 10px 30px rgba(60,80,140,0.12);
+    }
+
+    /* setup */
+    .label { font-weight: 700; margin: 14px 0 8px; color: #3a4a66; }
+    .topics { display: flex; flex-wrap: wrap; gap: 10px; }
+    .topic-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #f1f5ff; border: 2px solid #d6e0f5; border-radius: 999px;
+      padding: 8px 16px; cursor: pointer; user-select: none; font-weight: 600; text-transform: capitalize;
+    }
+    .topic-chip.on { background: #dcecff; border-color: #6aa3f0; color: #1b4a86; }
+    .topic-chip input { display: none; }
+    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    select, .btn {
+      font-size: 17px; font-family: inherit; border-radius: 12px; padding: 10px 16px; border: 2px solid #cdd8ee;
+      background: #fff; cursor: pointer;
+    }
+    .btn {
+      border: none; color: #fff; font-weight: 700;
+      background: linear-gradient(135deg, #4f86f7, #6aa3f0); box-shadow: 0 6px 16px rgba(80,130,240,0.35);
+      transition: transform .1s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:disabled { opacity: .5; cursor: default; transform: none; }
+    .btn.secondary { background: #eef2fb; color: #3a4a66; box-shadow: none; }
+    .btn.big { font-size: 20px; padding: 14px 40px; display: block; margin: 22px auto 0; }
+
+    /* quiz */
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; color: #51607c; font-weight: 700; }
+    .progress-bar { height: 8px; background: #e6ecfa; border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #4f86f7, #67d6a6); width: 0; transition: width .25s; }
+    .prompt { font-size: 23px; font-weight: 700; margin: 4px 0 14px; line-height: 1.35; }
+    .figure { text-align: center; margin: 10px 0 18px; }
+    .figure svg { max-width: 100%; height: auto; }
+    .math { text-align: center; font-size: 30px; margin: 8px 0 20px; }
+    .hint { text-align: center; color: #9aa6bd; font-size: 14px; margin-bottom: 14px; }
+
+    .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .choice {
+      font-size: 20px; font-weight: 700; padding: 16px; border-radius: 14px; cursor: pointer;
+      background: #f3f7ff; border: 2px solid #d6e0f5; color: #2b3a55; text-align: center; transition: all .12s;
+    }
+    .choice:hover:not(:disabled) { border-color: #6aa3f0; background: #e8f1ff; }
+    .choice:disabled { cursor: default; }
+    .choice.correct { background: #d7f7e2; border-color: #46c281; color: #136b3c; }
+    .choice.wrong { background: #ffe0e0; border-color: #f08a8a; color: #a02626; }
+    .typed { display: flex; gap: 10px; }
+    .typed input {
+      flex: 1; font-size: 22px; padding: 14px 16px; border-radius: 14px; border: 2px solid #d6e0f5; font-family: inherit;
+    }
+
+    .feedback { margin-top: 18px; padding: 14px 16px; border-radius: 14px; font-size: 18px; display: none; }
+    .feedback.show { display: block; }
+    .feedback.good { background: #e7f9ee; color: #176c3c; border: 2px solid #9be0b6; }
+    .feedback.bad { background: #fdecec; color: #9c2a2a; border: 2px solid #f3b4b4; }
+    .feedback .explain { margin-top: 6px; font-size: 15px; color: inherit; opacity: .85; }
+
+    /* results */
+    .score-big { text-align: center; font-size: 46px; font-weight: 800; color: #2b6cb0; margin: 8px 0; }
+    .score-sub { text-align: center; color: #6a7790; margin-bottom: 16px; }
+    .breakdown { margin: 14px 0; }
+    .brow { display: flex; justify-content: space-between; padding: 8px 4px; border-bottom: 1px solid #eef1f8; text-transform: capitalize; }
+    .missed h3 { margin: 18px 0 8px; color: #b14a4a; }
+    .miss { background: #fbf3f3; border: 1px solid #f0d6d6; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; }
+    .miss .q { font-weight: 700; }
+    .miss .a { font-size: 15px; margin-top: 4px; }
+    .miss .a .yours { color: #a02626; }
+    .miss .a .right { color: #176c3c; }
+    [hidden] { display: none !important; }
+    @media (max-width: 480px) { .choices { grid-template-columns: 1fr; } h1 { font-size: 25px; } .prompt { font-size: 20px; } }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>Practice Test 🎓</h1>
+    <div class="subtitle">Pick your topics and see how many you can get right!</div>
+    <div style="text-align:center;margin:-6px 0 16px;"><a href="index.html" style="color:#4f86f7;font-weight:600;text-decoration:none;">🏎 Back to the Racing Game</a></div>
+
+    <!-- SETUP -->
+    <section id="setup" class="card">
+      <div class="label">Choose topics</div>
+      <div id="topic-list" class="topics"></div>
+
+      <div class="label">How many questions?</div>
+      <div class="row">
+        <select id="count">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+          <option value="0">All</option>
+        </select>
+      </div>
+
+      <div class="label">Difficulty</div>
+      <div class="row">
+        <select id="difficulty">
+          <option value="all" selected>All levels</option>
+          <option value="easy">Easy ★</option>
+          <option value="medium">Medium ★★</option>
+          <option value="hard">Hard ★★★</option>
+        </select>
+      </div>
+
+      <button id="start-btn" class="btn big">Start Test ▶</button>
+      <div id="setup-error" style="color:#c0392b;text-align:center;margin-top:10px;"></div>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="quiz" class="card" hidden>
+      <div class="topbar">
+        <span id="q-progress">Question 1 / 10</span>
+        <span id="q-score">Score: 0</span>
+      </div>
+      <div class="progress-bar"><div id="q-fill" class="progress-fill"></div></div>
+
+      <div id="q-prompt" class="prompt"></div>
+      <div id="q-figure" class="figure"></div>
+      <div id="q-math" class="math"></div>
+      <div id="q-hint" class="hint"></div>
+
+      <div id="q-answer"></div>
+
+      <div id="q-feedback" class="feedback"></div>
+      <button id="next-btn" class="btn big" hidden>Next ▶</button>
+    </section>
+
+    <!-- RESULTS -->
+    <section id="results" class="card" hidden>
+      <div class="score-big" id="r-score"></div>
+      <div class="score-sub" id="r-sub"></div>
+      <div class="breakdown" id="r-breakdown"></div>
+      <div class="missed" id="r-missed"></div>
+      <div class="row" style="justify-content:center;gap:14px;margin-top:18px;">
+        <button id="retry-btn" class="btn">Try Again 🔁</button>
+        <button id="back-btn" class="btn secondary">Change Topics</button>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

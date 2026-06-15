@@ -1,0 +1,35 @@
+[
+  {
+    "id": "tm-001",
+    "topic": "time",
+    "prompt": "What time does the clock show?",
+    "figure": { "kind": "clock", "time": "3:45" },
+    "answer": "3:45",
+    "choices": ["3:45", "9:15", "4:15", "3:15"],
+    "time": 12,
+    "difficulty": 2
+  },
+  {
+    "id": "tm-002",
+    "topic": "time",
+    "prompt": "What time will it be in 30 minutes?",
+    "figure": { "kind": "clock", "time": "2:15" },
+    "answer": "2:45",
+    "choices": ["2:45", "2:30", "3:15", "1:45"],
+    "time": 18,
+    "difficulty": 3,
+    "explain": "2:15 + 30 minutes = 2:45."
+  },
+  {
+    "id": "tm-003",
+    "topic": "time",
+    "prompt": "What time does the clock show?",
+    "figure": { "kind": "clock", "time": "6:00" },
+    "answer": "6:00",
+    "choices": ["6:00", "12:30", "6:30", "7:00"],
+    "time": 10,
+    "difficulty": 1
+  },
+
+  { "id": "tm-gen-read", "topic": "time", "gen": "clockRead", "time": 12, "difficulty": 2 }
+]

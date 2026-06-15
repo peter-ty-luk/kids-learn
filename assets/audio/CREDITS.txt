@@ -1,0 +1,33 @@
+Audio assets — source & license
+================================
+
+Source:  Pixabay (https://pixabay.com)
+License: Pixabay Content License — free for commercial & non-commercial use,
+         no attribution required. Do not resell/redistribute the files as stock.
+         https://pixabay.com/service/license-summary/
+
+Background music (assets/audio/music/):
+  01-street-racing.mp3                        Street Racing
+  02-racing-car-automotive-music.mp3          Racing Car Automotive Music
+  03-action-racing-speed-music.mp3            Action Racing Speed Music
+  04-drift-drifting-racing-music.mp3          Drift Drifting Racing Music
+  05-racing-car-automotive-music.mp3          Racing Car Automotive Music
+  06-car-racing-automotive-music.mp3          Car Racing Automotive Music
+  07-car-racing-automotive-music.mp3          Car Racing Automotive Music
+  08-car.mp3                                  Car
+  09-fast.mp3                                 Fast
+  10-sport.mp3                                Sport
+
+Sound effects (assets/audio/sfx/):
+  engine.mp3          Engine
+  boost.mp3           Near Miss Swing Whoosh 3
+  crash.mp3           Car Crash Sound Effect
+  hit.mp3             metal impact
+  pickup.mp3          Power Up Game Sound Effect
+  coin.mp3            Coin Pickup
+  lap.mp3             Ding SFX
+  win.mp3             Brass fanfare reverberated
+  countdown.mp3       Race Start Beeps
+  click.mp3           UI Mouse Click
+  start.mp3           Start sound beep
+  horn.mp3            Train Horn

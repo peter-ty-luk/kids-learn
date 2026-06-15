@@ -1,0 +1,18 @@
+[
+  { "id": "ar-001", "topic": "arithmetic", "prompt": "What is 3 + 5?",    "answer": "8",  "choices": ["6", "8", "10", "12"],   "time": 3, "difficulty": 1 },
+  { "id": "ar-002", "topic": "arithmetic", "prompt": "What is 12 - 7?",   "answer": "5",  "choices": ["3", "5", "8", "10"],    "time": 3, "difficulty": 1 },
+  { "id": "ar-003", "topic": "arithmetic", "prompt": "What is 4 × 6?",    "answer": "24", "choices": ["18", "24", "30", "36"], "time": 4, "difficulty": 2 },
+  { "id": "ar-004", "topic": "arithmetic", "prompt": "What is 15 ÷ 3?",   "answer": "5",  "choices": ["3", "5", "7", "9"],     "time": 4, "difficulty": 2 },
+  { "id": "ar-005", "topic": "arithmetic", "prompt": "What is 9 + 8?",    "answer": "17", "choices": ["15", "16", "17", "18"], "time": 3, "difficulty": 1 },
+  { "id": "ar-006", "topic": "arithmetic", "prompt": "What is 100 - 37?", "answer": "63", "choices": ["53", "63", "73", "83"], "time": 5, "difficulty": 2 },
+  { "id": "ar-007", "topic": "arithmetic", "prompt": "What is 7 × 8?",    "answer": "56", "choices": ["48", "56", "64", "72"], "time": 5, "difficulty": 2 },
+  { "id": "ar-008", "topic": "arithmetic", "prompt": "What is 81 ÷ 9?",   "answer": "9",  "choices": ["7", "8", "9", "10"],    "time": 4, "difficulty": 2 },
+  { "id": "ar-009", "topic": "arithmetic", "prompt": "What is 6 × 7?",    "answer": "42", "choices": ["35", "42", "48", "56"], "time": 4, "difficulty": 2 },
+  { "id": "ar-010", "topic": "arithmetic", "prompt": "What is 25 + 38?",  "answer": "63", "choices": ["53", "63", "73", "83"], "time": 5, "difficulty": 2 },
+  { "id": "ar-011", "topic": "arithmetic", "prompt": "What is 2 + 2?",    "answer": "4",  "choices": ["3", "4", "5", "6"],     "time": 2, "difficulty": 1 },
+  { "id": "ar-012", "topic": "arithmetic", "prompt": "What is 5 × 5?",    "answer": "25", "choices": ["20", "25", "30", "35"], "time": 4, "difficulty": 2 },
+
+  { "id": "ar-gen-add", "topic": "arithmetic", "gen": "addition",       "time": 4, "difficulty": 1 },
+  { "id": "ar-gen-sub", "topic": "arithmetic", "gen": "subtraction",    "time": 5, "difficulty": 2 },
+  { "id": "ar-gen-mul", "topic": "arithmetic", "gen": "multiplication", "time": 5, "difficulty": 2 }
+]

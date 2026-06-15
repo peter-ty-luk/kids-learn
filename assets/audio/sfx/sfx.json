@@ -1,0 +1,50 @@
+{
+  "engine": {
+    "file": "engine.mp3",
+    "title": "Engine"
+  },
+  "boost": {
+    "file": "boost.mp3",
+    "title": "Near Miss Swing Whoosh 3"
+  },
+  "crash": {
+    "file": "crash.mp3",
+    "title": "Car Crash Sound Effect"
+  },
+  "hit": {
+    "file": "hit.mp3",
+    "title": "metal impact"
+  },
+  "pickup": {
+    "file": "pickup.mp3",
+    "title": "Power Up Game Sound Effect"
+  },
+  "coin": {
+    "file": "coin.mp3",
+    "title": "Coin Pickup"
+  },
+  "lap": {
+    "file": "lap.mp3",
+    "title": "Ding SFX"
+  },
+  "win": {
+    "file": "win.mp3",
+    "title": "Brass fanfare reverberated"
+  },
+  "countdown": {
+    "file": "countdown.mp3",
+    "title": "Race Start Beeps"
+  },
+  "click": {
+    "file": "click.mp3",
+    "title": "UI Mouse Click"
+  },
+  "start": {
+    "file": "start.mp3",
+    "title": "Start sound beep"
+  },
+  "horn": {
+    "file": "horn.mp3",
+    "title": "Train Horn"
+  }
+}
