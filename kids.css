@@ -1,0 +1,124 @@
+/* ============================================================
+   kids.css — a bright, playful theme shared by the kid games
+   (Pair Match + Pair Maze). Loaded AFTER each page's own <style>,
+   so it overrides the plain base look with a fun, colourful one.
+   Pure CSS (gracefully falls back if the web font can't load).
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap');
+
+:root {
+  --font: 'Fredoka', 'Baloo 2', 'Trebuchet MS', system-ui, -apple-system, Arial, sans-serif;
+  --ink: #43386e;
+  --coral: #ff7a59; --sunny: #ffc83d; --grass: #36cf6f; --ocean: #3aa0ff;
+  --berry: #ff5d9e; --grape: #9b6cff; --mint: #2fd6b6;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  min-height: 100vh;
+  background: linear-gradient(160deg, #bfeaff 0%, #d8c8ff 36%, #ffd0ec 68%, #fff1c9 100%) fixed;
+  position: relative;
+  overflow-x: hidden;
+}
+/* floating soft "bubbles" that gently drift — adds life without any markup */
+body::before {
+  content: ""; position: fixed; inset: -12% 0; z-index: 0; pointer-events: none; opacity: 0.55;
+  background-repeat: no-repeat;
+  background-image:
+    radial-gradient(circle 40px at 10% 18%, rgba(255,255,255,0.95), transparent 62%),
+    radial-gradient(circle 24px at 80% 26%, rgba(255,228,140,0.9), transparent 62%),
+    radial-gradient(circle 32px at 26% 72%, rgba(150,225,255,0.9), transparent 62%),
+    radial-gradient(circle 20px at 66% 82%, rgba(255,150,205,0.9), transparent 62%),
+    radial-gradient(circle 28px at 90% 64%, rgba(160,255,205,0.9), transparent 62%),
+    radial-gradient(circle 18px at 48% 40%, rgba(200,170,255,0.9), transparent 62%),
+    radial-gradient(circle 22px at 40% 12%, rgba(255,190,140,0.85), transparent 62%);
+  animation: kfloat 14s ease-in-out infinite alternate;
+}
+@keyframes kfloat { from { transform: translateY(0); } to { transform: translateY(-26px); } }
+
+/* keep all real content above the bubbles */
+#app { position: relative; z-index: 1; }
+
+/* --- headings --- */
+h1 {
+  font-weight: 700; letter-spacing: 0.5px; color: #6a4bff;
+  text-shadow: 0 2px 0 #fff, 0 3px 0 rgba(255,255,255,0.6), 0 6px 14px rgba(106,75,255,0.28);
+}
+.subtitle { color: #6f5fa6 !important; font-weight: 600; }
+
+/* --- chunky toy buttons (solid 3D bottom edge) --- */
+.btn {
+  font-family: var(--font); font-weight: 700; font-size: clamp(17px, 2.4vw, 22px);
+  color: #fff; border: none; border-radius: 18px; padding: 14px 28px; cursor: pointer;
+  background: linear-gradient(135deg, #5fe27a, #28c98c);
+  box-shadow: 0 6px 0 #1da876, 0 11px 18px rgba(40,201,140,0.35);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.btn:hover { transform: translateY(-2px) scale(1.03); filter: brightness(1.06); }
+.btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #1da876, 0 4px 10px rgba(40,201,140,0.3); }
+.btn:disabled { filter: grayscale(0.4); box-shadow: 0 6px 0 #cfcad9; }
+.btn.ghost {
+  background: #fff; color: #7a5bd6;
+  box-shadow: 0 5px 0 #e3dcfa, 0 9px 16px rgba(120,100,200,0.18);
+}
+.btn.ghost:active { box-shadow: 0 2px 0 #e3dcfa; }
+
+/* small chrome buttons (back / sound) */
+.back, .snd {
+  font-family: var(--font); font-weight: 700; color: #6a5bbf;
+  background: #fff; border: 3px solid #eadff9; border-radius: 14px;
+  box-shadow: 0 4px 0 #e3dcfa; transition: transform .1s ease;
+}
+.back:hover, .snd:hover { transform: translateY(-1px); }
+.back:active, .snd:active { transform: translateY(3px); box-shadow: 0 1px 0 #e3dcfa; }
+
+/* --- cards pop in with a soft, chunky shadow --- */
+.card {
+  background: #fff; border-radius: 26px; border: 4px solid #fff;
+  box-shadow: 0 12px 0 rgba(120,110,200,0.10), 0 20px 40px rgba(80,70,160,0.20);
+  animation: kpop .35s ease both;
+}
+@keyframes kpop { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } }
+
+.label { color: #8a4fd6 !important; font-weight: 700 !important; }
+
+/* --- playful pills (topic chips, mode/twist/size options) --- */
+.opt, .chip, .topic-chip {
+  border-radius: 999px; border: 3px solid #eadff7; background: #fff;
+  font-weight: 600; transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.opt:hover, .chip:hover, .topic-chip:hover { transform: translateY(-2px) rotate(-1deg); }
+.opt.on, .chip.on, .topic-chip.on {
+  color: #fff; border-color: transparent; transform: scale(1.05);
+  background: linear-gradient(135deg, var(--ocean), #6cc4ff);
+  box-shadow: 0 5px 12px rgba(58,160,255,0.35);
+}
+/* a rainbow of "selected" colours so a row of chips is cheerful */
+.opts .opt.on:nth-child(5n+1), .chips .chip.on:nth-child(5n+1), .topics .topic-chip.on:nth-child(5n+1) { background: linear-gradient(135deg, var(--coral), #ffae8a); box-shadow: 0 5px 12px rgba(255,122,89,0.35); }
+.opts .opt.on:nth-child(5n+2), .chips .chip.on:nth-child(5n+2), .topics .topic-chip.on:nth-child(5n+2) { background: linear-gradient(135deg, var(--grass), #84e6a0); box-shadow: 0 5px 12px rgba(54,207,111,0.35); }
+.opts .opt.on:nth-child(5n+3), .chips .chip.on:nth-child(5n+3), .topics .topic-chip.on:nth-child(5n+3) { background: linear-gradient(135deg, var(--berry), #ff96c2); box-shadow: 0 5px 12px rgba(255,93,158,0.35); }
+.opts .opt.on:nth-child(5n+4), .chips .chip.on:nth-child(5n+4), .topics .topic-chip.on:nth-child(5n+4) { background: linear-gradient(135deg, var(--grape), #c3a6ff); box-shadow: 0 5px 12px rgba(155,108,255,0.35); }
+.opts .opt.on:nth-child(5n+5), .chips .chip.on:nth-child(5n+5), .topics .topic-chip.on:nth-child(5n+5) { background: linear-gradient(135deg, var(--sunny), #ffe08a); color: #6b4a00; box-shadow: 0 5px 12px rgba(255,200,61,0.4); }
+
+/* --- Pair Match: mode cards + difficulty cards --- */
+.mode { border-radius: 20px; border-width: 3px; }
+.mode.on { border-color: var(--grape); background: #f3edff; box-shadow: 0 8px 18px rgba(155,108,255,0.22); }
+.mode .m-title { color: #6a4bff !important; }
+
+/* --- Pair Maze: player HUD boxes --- */
+.pbox { border-radius: 16px; border-width: 3px; }
+.pbox.p1 { border-color: #6cc4ff; background: #eef7ff; }
+.pbox.p2 { border-color: #ff9db0; background: #fff0f3; }
+.msg { color: #8a4fd6 !important; }
+
+/* big celebratory win text */
+.win .big, #cup-standings-overlay .cup-head { letter-spacing: 0.5px; }
+
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+  .card { animation: none; }
+}

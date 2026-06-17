@@ -83,6 +83,33 @@ check("points COMBINE across both tracks: host 20, guest 14", ptsf[hostPid] === 
 check("overall winner is the host (most combined points)", sf.standings[0].pid === hostPid);
 check("exactly two standings screens (one per track)", (await host.evaluate(() => window._standingsLog.length)) === 2);
 
+// --- detailed per-track breakdown in the payload ---
+check("final payload carries results for BOTH tracks", Array.isArray(sf.results) && sf.results.length === 2, `len=${sf.results && sf.results.length}`);
+const t1 = sf.results[0], t2 = sf.results[1];
+const hostT1 = t1.ranking.find(r => r.pid === hostPid), guestT1 = t1.ranking.find(r => r.pid === guestPid);
+check("track 1 detail: host rank 1 +10, guest rank 2 +7",
+  hostT1.rank === 1 && hostT1.points === 10 && guestT1.rank === 2 && guestT1.points === 7,
+  `host=${hostT1.rank}/${hostT1.points} guest=${guestT1.rank}/${guestT1.points}`);
+check("each track result records its trackId", t1.trackId === 0 && t2.trackId === 1, `${t1.trackId},${t2.trackId}`);
+
+// --- detailed table actually rendered on screen ---
+const tbl = await host.evaluate(() => {
+  const t = document.querySelector("#cup-standings-overlay .cup-detail");
+  if (!t) return null;
+  return {
+    cols: t.querySelectorAll("thead th").length,
+    rows: t.querySelectorAll("tbody tr").length,
+    firstRow: t.querySelector("tbody tr").textContent.replace(/\s+/g, " ").trim(),
+    wins: t.querySelectorAll("td.cd-cell.win").length,
+    latest: t.querySelectorAll(".cd-latest").length,
+  };
+});
+check("breakdown table rendered (Racer + 2 tracks + Σ = 4 cols)", tbl && tbl.cols === 4, tbl ? `cols=${tbl.cols}` : "no table");
+check("breakdown has a row per player", tbl && tbl.rows === 2, tbl ? `rows=${tbl.rows}` : "");
+check("leader row shows per-track points + total (e.g. +10 … 20)", tbl && /\+10/.test(tbl.firstRow) && /20/.test(tbl.firstRow), tbl ? JSON.stringify(tbl.firstRow) : "");
+check("each track's winner cell is highlighted (2 wins: host won both)", tbl && tbl.wins === 2, tbl ? `wins=${tbl.wins}` : "");
+check("the just-finished track column is marked latest", tbl && tbl.latest >= 1, tbl ? `latest=${tbl.latest}` : "");
+
 // client rendering: the champion overlay is on screen for both
 await sleep(400);
 const champText = await host.evaluate(() => { const el = document.getElementById("cup-standings-overlay"); return el ? el.textContent : ""; });

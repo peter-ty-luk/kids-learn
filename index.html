@@ -633,6 +633,45 @@
             margin-bottom: clamp(14px, 2.4vmin, 28px);
         }
 
+        /* --- Detailed track-by-track breakdown table --- */
+        #cup-standings-overlay .cup-detail-wrap {
+            width: min(96vw, 720px); max-width: 96vw; overflow-x: auto;
+            margin-bottom: clamp(14px, 2.4vmin, 28px);
+        }
+        #cup-standings-overlay .cup-detail {
+            border-collapse: separate; border-spacing: 4px; margin: 0 auto;
+            color: #fff; font-size: clamp(12px, 1.8vmin, 18px);
+        }
+        #cup-standings-overlay .cup-detail th,
+        #cup-standings-overlay .cup-detail td {
+            padding: clamp(5px, 0.9vmin, 9px) clamp(6px, 1vmin, 11px);
+            text-align: center; border-radius: 8px; white-space: nowrap;
+        }
+        #cup-standings-overlay .cup-detail th {
+            background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7);
+            font-size: clamp(14px, 2.1vmin, 22px); /* emoji track headers a touch bigger */
+        }
+        #cup-standings-overlay .cup-detail th.cd-racer { font-size: clamp(11px,1.6vmin,15px); }
+        #cup-standings-overlay .cup-detail th.cd-total,
+        #cup-standings-overlay .cup-detail td.cd-total {
+            color: #ffd93b; font-weight: bold; min-width: 2.2em;
+        }
+        #cup-standings-overlay .cup-detail th.cd-latest { box-shadow: inset 0 0 0 2px rgba(255,217,59,0.7); }
+        #cup-standings-overlay .cup-detail td.cd-racer {
+            text-align: left; background: rgba(255,255,255,0.06);
+            max-width: 8.5em; overflow: hidden; text-overflow: ellipsis;
+        }
+        #cup-standings-overlay .cup-detail td.cd-cell {
+            background: rgba(255,255,255,0.05); line-height: 1.05;
+        }
+        #cup-standings-overlay .cup-detail td.cd-cell.cd-latest { background: rgba(255,217,59,0.10); }
+        #cup-standings-overlay .cup-detail td.cd-cell.win { background: rgba(255,217,59,0.22); }
+        #cup-standings-overlay .cup-detail td.cd-cell.dnf { opacity: 0.5; }
+        #cup-standings-overlay .cup-detail .cd-pts { display: block; font-weight: bold; }
+        #cup-standings-overlay .cup-detail .cd-rank { display: block; font-size: 0.72em; color: rgba(255,255,255,0.55); }
+        #cup-standings-overlay .cup-detail tr.lead td.cd-racer { color: #ffd93b; }
+        #cup-standings-overlay .cup-detail tr.me td.cd-racer { box-shadow: inset 0 0 0 2px rgba(85,170,255,0.6); }
+
         #room-info {
             display: none;
             background: rgba(255,255,255,0.05);
@@ -888,7 +927,9 @@
             </div>
 
             <div class="lobby-section">
-                <h2>Practice</h2>
+                <h2>Brain Games</h2>
+                <a class="lobby-btn" id="match-btn" href="match.html" style="display:inline-block;text-decoration:none;">🃏 Pair Match</a>
+                <a class="lobby-btn" id="maze-btn" href="maze.html" style="display:inline-block;text-decoration:none;">🧩 Pair Maze</a>
                 <a class="lobby-btn" id="practice-btn" href="test.html" style="display:inline-block;text-decoration:none;">📝 Practice Test</a>
             </div>
         </div>

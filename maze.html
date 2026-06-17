@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Pair Maze</title>
+  <script defer src="maze.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+      background: linear-gradient(160deg, #eaf3ff, #f6ecff 60%, #fff4e8);
+      color: #243042; min-height: 100vh;
+    }
+    #app { max-width: 880px; margin: 0 auto; padding: 14px 12px 60px; }
+    .top { display: flex; align-items: center; gap: 12px; margin: 6px 0 2px; }
+    .back { text-decoration: none; color: #4a5b7a; font-weight: 700; font-size: 16px;
+      background: #fff; border: 2px solid #d6e0f5; border-radius: 12px; padding: 8px 14px; }
+    .snd { width: 60px; font-size: 22px; cursor: pointer; background: #fff; border: 2px solid #d6e0f5;
+      border-radius: 12px; padding: 6px 0; line-height: 1; }
+    .snd.off { opacity: 0.55; }
+    h1 { flex: 1; text-align: center; font-size: clamp(22px, 5vw, 32px); margin: 0; color: #2b3a55; }
+    .subtitle { text-align: center; color: #6a7790; margin: 2px 0 14px; font-size: 14px; }
+
+    .card { background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 10px 30px rgba(60,80,140,0.12); }
+    .label { font-weight: 800; margin: 10px 0 8px; color: #3a4a66; }
+    .label:first-child { margin-top: 0; }
+
+    .btn { font-size: 17px; font-family: inherit; border-radius: 14px; padding: 12px 20px;
+      border: none; background: linear-gradient(135deg, #5b8cff, #7aa0ff); color: #fff; font-weight: 800;
+      cursor: pointer; box-shadow: 0 6px 16px rgba(91,140,255,0.35); }
+    .btn:active { transform: translateY(1px); }
+    .btn.ghost { background: #fff; color: #4a5b7a; border: 2px solid #d6e0f5; box-shadow: none; }
+
+    .opts { display: flex; flex-wrap: wrap; gap: 9px; }
+    .opt { background: #f1f5ff; border: 2px solid #d6e0f5; border-radius: 12px;
+      padding: 9px 16px; cursor: pointer; font-weight: 700; font-size: 14px; user-select: none; }
+    .opt.on { background: #dcecff; border-color: #6aa3f0; color: #1b4a86; }
+    .opt .o-emoji { margin-right: 5px; }
+    .start-row { margin-top: 18px; display: flex; justify-content: center; }
+    .empty { text-align: center; color: #8a93a8; padding: 20px 10px; }
+
+    /* game */
+    #game { display: none; }
+    .hud { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .pbox { flex: 1 1 200px; border-radius: 14px; padding: 10px 14px; background: #f4f8ff; border: 2px solid #e0e8fa; }
+    .pbox.p1 { border-color: #8fb6ff; }
+    .pbox.p2 { border-color: #ff9db0; }
+    .pbox .pname { font-weight: 800; font-size: 14px; color: #3a4a66; }
+    .pbox .pcarry { font-size: 15px; color: #28406e; min-height: 22px; font-weight: 700; }
+    .pbox .pcarry .empty-h { color: #9aa6bd; font-weight: 600; }
+    .pbox .pscore { font-size: 13px; color: #6a7790; margin-top: 2px; }
+    .pbox .pscore b { color: #2b6cff; }
+
+    .stage { display: flex; justify-content: center; }
+    canvas { background: #3a2f7a; border-radius: 18px; max-width: 100%; height: auto; touch-action: none;
+      box-shadow: 0 12px 30px rgba(70,55,150,0.3); }
+    .msg { text-align: center; min-height: 24px; font-weight: 800; color: #2b6cff; margin: 8px 0 4px; }
+    .controls-hint { text-align: center; color: #8a93a8; font-size: 13px; margin-top: 6px; }
+    .roundbar { margin-top: 12px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    /* win overlay */
+    #win-overlay { position: fixed; inset: 0; background: rgba(12,18,38,0.82); display: none;
+      align-items: center; justify-content: center; z-index: 50; }
+    #win-overlay .panel { background: #fff; border-radius: 22px; padding: 30px 34px; text-align: center; max-width: 90vw; }
+    #win-overlay .wbig { font-size: clamp(26px, 6vw, 44px); font-weight: 900; color: #2bb673; margin: 4px 0 8px; }
+    #win-overlay .wsub { color: #44557a; font-size: 17px; margin-bottom: 18px; }
+
+    /* on-screen dpad (touch) */
+    #dpad { display: none; justify-content: center; gap: 8px; margin-top: 12px; }
+    #dpad .pad { display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(3, 52px); gap: 6px; }
+    #dpad .pad button { font-size: 22px; border-radius: 12px; border: 2px solid #d6e0f5; background: #fff; cursor: pointer; }
+    @media (hover: none) and (pointer: coarse) { #dpad { display: flex; } }
+  </style>
+  <link rel="stylesheet" href="kids.css">
+</head>
+<body>
+  <div id="app">
+    <div class="top">
+      <a class="back" href="index.html">← Back</a>
+      <h1>🧩 Pair Maze</h1>
+      <button id="sound-btn" class="snd" title="Sound on/off" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div class="subtitle">Carry one piece at a time, match every pair, then escape the maze!</div>
+
+    <!-- SETUP -->
+    <div id="setup" class="card">
+      <div class="label">Players</div>
+      <div class="opts" id="opt-players">
+        <div class="opt on" data-players="1">🙂 1 Player</div>
+        <div class="opt" data-players="2">🙂🙃 2 Players (vs)</div>
+      </div>
+
+      <div class="label">Maze size</div>
+      <div class="opts" id="opt-size">
+        <div class="opt" data-size="small">Small</div>
+        <div class="opt on" data-size="medium">Medium</div>
+        <div class="opt" data-size="large">Large</div>
+      </div>
+
+      <div class="label">Twists</div>
+      <div class="opts" id="opt-twists">
+        <div class="opt" data-twist="hidden">🙈 Hidden Pairs (memorize!)</div>
+        <div class="opt" data-twist="dark">🌑 Dark Maze</div>
+        <div class="opt" data-twist="traps">⚠️ Traps (guards · doors)</div>
+      </div>
+
+      <div class="label">Topic</div>
+      <div class="opts" id="subject-chips"><span class="empty" style="padding:6px">Loading…</span></div>
+
+      <div class="start-row"><button id="start-btn" class="btn">Enter the Maze ▶</button></div>
+    </div>
+
+    <!-- GAME -->
+    <div id="game">
+      <div class="card">
+        <div class="hud" id="hud"></div>
+        <div class="msg" id="msg"></div>
+        <div class="stage"><canvas id="maze-canvas" width="600" height="600"></canvas></div>
+        <div id="dpad">
+          <div class="pad" data-pad="1">
+            <span></span><button data-dir="up">▲</button><span></span>
+            <button data-dir="left">◀</button><button data-dir="drop">✋</button><button data-dir="right">▶</button>
+            <span></span><button data-dir="down">▼</button><span></span>
+          </div>
+        </div>
+        <div class="controls-hint" id="controls-hint"></div>
+        <div class="roundbar">
+          <button id="quit-btn" class="btn ghost">Leave Maze</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="win-overlay">
+    <div class="panel">
+      <div style="font-size:46px">🏆</div>
+      <div class="wbig" id="win-title">You escaped!</div>
+      <div class="wsub" id="win-sub"></div>
+      <button id="win-again" class="btn">Play Again ▶</button>
+      <button id="win-menu" class="btn ghost">Menu</button>
+    </div>
+  </div>
+</body>
+</html>

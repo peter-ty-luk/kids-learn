@@ -542,13 +542,109 @@ function clearCupOverlays() {
     if (cd) { cd.style.display = 'none'; cd.textContent = ''; }
 }
 
+function ordinal(n) {
+    if (n === 1) return '1st';
+    if (n === 2) return '2nd';
+    if (n === 3) return '3rd';
+    return n + 'th';
+}
+
+// Detailed Grand Prix breakdown: one column per track played, one row per
+// player (ordered by overall standing). Each cell shows the rank + points that
+// player earned on that track; the final column is the running total. This is
+// the "what track, what rank, how many points" view.
+function buildCupBreakdown(data) {
+    const results = data.results || [];
+    if (!results.length) return null;
+    const standings = data.standings || [];
+    const totals = {};
+    standings.forEach(s => { totals[s.pid] = s.points; });
+
+    // Per-track lookup: pid → {rank, points, dnf} for fast cell fill.
+    const byTrack = results.map(res => {
+        const m = {};
+        (res.ranking || []).forEach(r => { m[r.pid] = r; });
+        return { trackId: res.trackId, byPid: m };
+    });
+
+    const wrap = document.createElement('div');
+    wrap.className = 'cup-detail-wrap';
+    const table = document.createElement('table');
+    table.className = 'cup-detail';
+
+    // Header: Racer | <track icons…> | Σ
+    const thead = document.createElement('thead');
+    const hr = document.createElement('tr');
+    const hRacer = document.createElement('th');
+    hRacer.className = 'cd-racer';
+    hRacer.textContent = 'Racer';
+    hr.appendChild(hRacer);
+    const latest = byTrack.length - 1; // the track that just finished
+    byTrack.forEach((t, i) => {
+        const track = TRACKS.find(x => x.id === t.trackId);
+        const th = document.createElement('th');
+        th.textContent = track && track.icon ? track.icon : `T${i + 1}`;
+        th.title = track ? track.name : `Track ${i + 1}`; // hover shows full name
+        if (i === latest) th.className = 'cd-latest';
+        hr.appendChild(th);
+    });
+    const hTot = document.createElement('th');
+    hTot.className = 'cd-total';
+    hTot.textContent = 'Σ';
+    hTot.title = 'Total points';
+    hr.appendChild(hTot);
+    thead.appendChild(hr);
+    table.appendChild(thead);
+
+    // One row per player, in overall-standings order.
+    const tbody = document.createElement('tbody');
+    standings.forEach((s, idx) => {
+        const tr = document.createElement('tr');
+        if (idx === 0) tr.className = 'lead';
+        if (s.pid === myPlayerId) tr.className += ' me';
+
+        const nameTd = document.createElement('td');
+        nameTd.className = 'cd-racer';
+        nameTd.textContent = `${idx + 1}. ${s.pid === myPlayerId ? 'You' : s.name}`;
+        tr.appendChild(nameTd);
+
+        byTrack.forEach((t, ti) => {
+            const cell = t.byPid[s.pid];
+            const td = document.createElement('td');
+            const latestCls = (ti === latest) ? ' cd-latest' : '';
+            if (!cell) { td.className = 'cd-cell' + latestCls; td.textContent = '–'; tr.appendChild(td); return; }
+            td.className = 'cd-cell' + latestCls + (cell.rank === 1 ? ' win' : '') + (cell.dnf ? ' dnf' : '');
+            const pts = document.createElement('span');
+            pts.className = 'cd-pts';
+            pts.textContent = cell.dnf ? '0' : `+${cell.points}`;
+            const rk = document.createElement('span');
+            rk.className = 'cd-rank';
+            rk.textContent = cell.dnf ? 'DNF' : ordinal(cell.rank);
+            td.appendChild(pts);
+            td.appendChild(rk);
+            tr.appendChild(td);
+        });
+
+        const totTd = document.createElement('td');
+        totTd.className = 'cd-total';
+        totTd.textContent = totals[s.pid] != null ? totals[s.pid] : 0;
+        tr.appendChild(totTd);
+
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    return wrap;
+}
+
 // Build the Grand Prix standings screen shown between tracks (and at the end).
-// `data` = { trackIndex, totalTracks, trackId, ranking, standings, final }.
+// `data` = { trackIndex, totalTracks, trackId, ranking, standings, results, final }.
 function renderCupStandings(data) {
     clearCupOverlays();
     document.getElementById('hud').style.display = 'none';
     document.getElementById('corner-hud').style.display = 'none';
     document.getElementById('road-question').style.display = 'none';
+    document.getElementById('countdown-overlay').style.display = 'none'; // no countdown bleed-through
 
     const gained = {};
     (data.ranking || []).forEach(r => { gained[r.pid] = r; });
@@ -578,36 +674,48 @@ function renderCupStandings(data) {
         ov.appendChild(champ);
     }
 
-    const board = document.createElement('div');
-    board.className = 'cup-board';
-    (data.standings || []).forEach((s, idx) => {
-        const row = document.createElement('div');
-        row.className = 'cup-row' + (idx === 0 ? ' lead' : '') + (s.pid === myPlayerId ? ' me' : '');
+    // Detailed track-by-track breakdown (rank + points per track, plus totals).
+    // Falls back to a simple standings board if no per-track results arrived
+    // (older server / first track only).
+    const detail = buildCupBreakdown(data);
+    if (detail) {
+        const legend = document.createElement('div');
+        legend.className = 'cup-sub';
+        legend.textContent = 'Track by track — each cell: points (rank)';
+        ov.appendChild(legend);
+        ov.appendChild(detail);
+    } else {
+        const board = document.createElement('div');
+        board.className = 'cup-board';
+        (data.standings || []).forEach((s, idx) => {
+            const row = document.createElement('div');
+            row.className = 'cup-row' + (idx === 0 ? ' lead' : '') + (s.pid === myPlayerId ? ' me' : '');
 
-        const pos = document.createElement('span');
-        pos.className = 'cup-pos';
-        pos.textContent = (idx + 1) + '.';
-        row.appendChild(pos);
+            const pos = document.createElement('span');
+            pos.className = 'cup-pos';
+            pos.textContent = (idx + 1) + '.';
+            row.appendChild(pos);
 
-        const name = document.createElement('span');
-        name.className = 'cup-name';
-        name.textContent = (s.pid === myPlayerId ? 'You' : s.name);
-        row.appendChild(name);
+            const name = document.createElement('span');
+            name.className = 'cup-name';
+            name.textContent = (s.pid === myPlayerId ? 'You' : s.name);
+            row.appendChild(name);
 
-        const g = gained[s.pid];
-        const gain = document.createElement('span');
-        gain.className = 'cup-gain';
-        gain.textContent = g ? (g.dnf ? 'DNF' : `+${g.points}`) : '';
-        row.appendChild(gain);
+            const g = gained[s.pid];
+            const gain = document.createElement('span');
+            gain.className = 'cup-gain';
+            gain.textContent = g ? (g.dnf ? 'DNF' : `+${g.points}`) : '';
+            row.appendChild(gain);
 
-        const pts = document.createElement('span');
-        pts.className = 'cup-pts';
-        pts.textContent = `${s.points} pt${s.points === 1 ? '' : 's'}`;
-        row.appendChild(pts);
+            const pts = document.createElement('span');
+            pts.className = 'cup-pts';
+            pts.textContent = `${s.points} pt${s.points === 1 ? '' : 's'}`;
+            row.appendChild(pts);
 
-        board.appendChild(row);
-    });
-    ov.appendChild(board);
+            board.appendChild(row);
+        });
+        ov.appendChild(board);
+    }
 
     if (data.final) {
         if (isHost) {

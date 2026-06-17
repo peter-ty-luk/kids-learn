@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Pair Match</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="match.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+      background: linear-gradient(160deg, #eaf3ff, #f6ecff 60%, #fff4e8);
+      color: #243042; min-height: 100vh;
+    }
+    #app { max-width: 860px; margin: 0 auto; padding: 16px 14px 70px; }
+    .top { display: flex; align-items: center; gap: 12px; margin: 8px 0 4px; }
+    .back { text-decoration: none; color: #4a5b7a; font-weight: 700; font-size: 16px;
+      background: #fff; border: 2px solid #d6e0f5; border-radius: 12px; padding: 8px 14px; }
+    .snd { width: 64px; font-size: 22px; cursor: pointer; background: #fff; border: 2px solid #d6e0f5;
+      border-radius: 12px; padding: 6px 0; line-height: 1; }
+    .snd.off { opacity: 0.55; }
+    h1 { flex: 1; text-align: center; font-size: clamp(24px, 5vw, 34px); margin: 0; color: #2b3a55; }
+    .subtitle { text-align: center; color: #6a7790; margin: 2px 0 16px; font-size: 15px; }
+
+    .card { background: #fff; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(60,80,140,0.12); }
+    .label { font-weight: 800; margin: 6px 0 10px; color: #3a4a66; }
+
+    .btn { font-size: 17px; font-family: inherit; border-radius: 14px; padding: 12px 20px;
+      border: none; background: linear-gradient(135deg, #5b8cff, #7aa0ff); color: #fff; font-weight: 800;
+      cursor: pointer; box-shadow: 0 6px 16px rgba(91,140,255,0.35); }
+    .btn:active { transform: translateY(1px); }
+    .btn.ghost { background: #fff; color: #4a5b7a; border: 2px solid #d6e0f5; box-shadow: none; }
+
+    /* setup */
+    .modes { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+    .mode {
+      flex: 1 1 220px; text-align: left; cursor: pointer; border: 3px solid #dbe4f7;
+      border-radius: 18px; padding: 16px 18px; background: #fbfdff; transition: all 0.15s;
+    }
+    .mode:hover { border-color: #9bbcff; }
+    .mode.on { border-color: #5b8cff; background: #eef4ff; box-shadow: 0 6px 18px rgba(91,140,255,0.2); }
+    .mode .m-emoji { font-size: 30px; }
+    .mode .m-title { font-weight: 800; font-size: 19px; margin: 4px 0 2px; color: #28406e; }
+    .mode .m-desc { color: #6a7790; font-size: 14px; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 4px; }
+    .chip { background: #f1f5ff; border: 2px solid #d6e0f5; border-radius: 999px;
+      padding: 7px 15px; cursor: pointer; font-weight: 700; font-size: 14px; user-select: none; }
+    .chip.on { background: #dcecff; border-color: #6aa3f0; color: #1b4a86; }
+
+    .start-row { margin-top: 18px; display: flex; justify-content: center; }
+
+    /* game */
+    #game { display: none; }
+    .hud { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .hud .prompt { flex: 1 1 220px; font-weight: 800; font-size: clamp(16px, 2.4vw, 20px); color: #28406e; }
+    .stat { background: #eef3ff; border-radius: 12px; padding: 6px 12px; font-weight: 800; color: #3a4a66; font-size: 14px; }
+    .stat b { color: #2b6cff; }
+
+    /* Rectangular grid — column count set per round via the --cols variable
+       (2×2, 3×2, 4×2, 4×3 …) so the cards always form a neat rectangle. */
+    #board { display: grid; gap: 12px; grid-template-columns: repeat(var(--cols, 4), 1fr); max-width: 760px; margin: 0 auto; }
+    @media (max-width: 480px) { #board { gap: 9px; } }
+
+    .tile {
+      position: relative; min-height: 104px; border-radius: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; text-align: center;
+      padding: 12px 10px; font-size: clamp(15px, 2.2vw, 19px); font-weight: 700; line-height: 1.25;
+      border: 3px solid transparent; user-select: none; transition: transform 0.12s, box-shadow 0.15s, background 0.15s;
+      word-break: break-word;
+    }
+    /* face-down back */
+    .tile.down { background: linear-gradient(135deg, #6a8cff, #9a7bff); color: transparent; box-shadow: 0 6px 14px rgba(106,140,255,0.35); }
+    .tile.down::after { content: "❓"; position: absolute; font-size: 34px; color: rgba(255,255,255,0.92); }
+    .tile.down .content { visibility: hidden; }
+    /* face-up */
+    .tile.up { background: #fff; color: #243042; box-shadow: 0 6px 16px rgba(60,80,140,0.14); border-color: #e3e9f7; }
+    .tile.side-left.up { background: #fff7ec; border-color: #ffd9a8; }
+    .tile.side-right.up { background: #eefcf3; border-color: #b6ecc8; }
+    .tile.sel { border-color: #5b8cff !important; box-shadow: 0 0 0 4px rgba(91,140,255,0.25); transform: translateY(-2px); }
+    .tile.match { background: #e4f8ea !important; border-color: #58c47a !important; color: #1f7a44; cursor: default; box-shadow: none; }
+    .tile.match::after { content: ""; }
+    .tile.wrong { animation: shake 0.4s; border-color: #ff6b6b !important; background: #ffeaea !important; }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+    .tile .content { pointer-events: none; }
+    .tile .badge { position: absolute; top: 6px; left: 8px; font-size: 11px; font-weight: 800;
+      color: #9aa6bd; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .roundbar { margin-top: 16px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .explain { margin-top: 14px; background: #f3f7ff; border-radius: 14px; padding: 12px 16px;
+      color: #44557a; font-size: 15px; display: none; }
+
+    /* win flash */
+    .win { text-align: center; }
+    .win .big { font-size: clamp(26px, 6vw, 44px); font-weight: 900; color: #2bb673; margin: 4px 0; }
+    .empty { text-align: center; color: #8a93a8; padding: 30px 10px; }
+    .katex { font-size: 1em; }
+  </style>
+  <link rel="stylesheet" href="kids.css">
+</head>
+<body>
+  <div id="app">
+    <div class="top">
+      <a class="back" href="index.html">← Back</a>
+      <h1>🃏 Pair Match</h1>
+      <button id="sound-btn" class="snd" title="Sound on/off" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div class="subtitle">Match each pair. Learn while you play!</div>
+
+    <!-- SETUP -->
+    <div id="setup" class="card">
+      <div class="label">Choose a game</div>
+      <div class="modes">
+        <div class="mode on" data-mode="easy">
+          <div class="m-emoji">🙂</div>
+          <div class="m-title">Easy — Faces Up</div>
+          <div class="m-desc">All cards show. Tap two that go together.</div>
+        </div>
+        <div class="mode" data-mode="memory">
+          <div class="m-emoji">🧠</div>
+          <div class="m-title">Memory — Faces Down</div>
+          <div class="m-desc">Cards are hidden. Flip two and remember where they are!</div>
+        </div>
+      </div>
+
+      <div class="label" style="margin-top:18px">Topic</div>
+      <div id="subject-chips" class="chips"><span class="empty" style="padding:6px">Loading…</span></div>
+
+      <div class="start-row">
+        <button id="start-btn" class="btn">Start Playing ▶</button>
+      </div>
+    </div>
+
+    <!-- GAME -->
+    <div id="game">
+      <div class="card">
+        <div class="hud">
+          <div class="prompt" id="prompt">—</div>
+          <div class="stat">Pairs <b id="stat-matched">0</b>/<span id="stat-total">0</span></div>
+          <div class="stat">Tries <b id="stat-moves">0</b></div>
+        </div>
+        <div id="board"></div>
+        <div id="explain" class="explain"></div>
+        <div class="roundbar">
+          <button id="next-btn" class="btn" style="display:none">Next Round →</button>
+          <button id="quit-btn" class="btn ghost">Change Game</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
