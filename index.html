@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <title>Mini Kart Racing</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏎️</text></svg>">
     <style>
@@ -117,28 +117,32 @@
         /* Scales with viewport width so it stays compact on small screens. */
         #road-question {
             position: absolute;
-            top: clamp(6px, 1.5vw, 18px);
+            top: clamp(6px, 1.2vmin, 14px);
             left: 50%;
             transform: translateX(-50%);
-            max-width: min(94vw, 800px);
-            background: rgba(14,18,44,0.88);
-            border: clamp(2px, 0.5vw, 4px) solid #ffd93b;
-            border-radius: clamp(12px, 2.2vw, 26px);
-            padding: clamp(8px, 1.8vw, 28px) clamp(14px, 4vw, 52px) clamp(10px, 2vw, 30px);
+            /* size by vmin (the SMALLER screen dimension) so it never balloons on a
+               wide-but-short screen, and cap its height so it can't block the view */
+            max-width: min(92vw, 680px);
+            max-height: 38vh;
+            overflow: hidden;
+            background: rgba(14,18,44,0.9);
+            border: 2px solid #ffd93b;
+            border-radius: clamp(10px, 1.6vmin, 18px);
+            padding: clamp(6px, 1.1vmin, 13px) clamp(12px, 2.2vmin, 28px) clamp(7px, 1.3vmin, 15px);
             text-align: center;
             color: #fff;
             pointer-events: none;
             display: none;
-            box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+            box-shadow: 0 6px 22px rgba(0,0,0,0.4);
         }
         #road-question .rq-label {
-            font-size: clamp(12px, 1.8vw, 26px); letter-spacing: clamp(2px, 0.4vw, 5px); color: #ffd93b; font-weight: 700; opacity: .9;
+            font-size: clamp(10px, 1.4vmin, 15px); letter-spacing: clamp(2px, 0.3vmin, 4px); color: #ffd93b; font-weight: 700; opacity: .9;
         }
-        #road-question .rq-text { font-size: clamp(18px, 4.4vw, 62px); font-weight: 800; margin: clamp(4px, 0.8vw, 8px) 0 clamp(8px, 1.6vw, 20px); }
-        #road-question .rq-choices { display: flex; gap: clamp(6px, 1.8vw, 26px); justify-content: center; flex-wrap: wrap; }
+        #road-question .rq-text { font-size: clamp(15px, 2.7vmin, 27px); font-weight: 800; margin: clamp(2px, 0.5vmin, 6px) 0 clamp(5px, 1vmin, 12px); line-height: 1.15; }
+        #road-question .rq-choices { display: flex; gap: clamp(6px, 1.2vmin, 14px); justify-content: center; flex-wrap: wrap; }
         #road-question .rq-choices span {
             background: rgba(255,255,255,0.14); border: 2px solid rgba(255,255,255,0.25);
-            border-radius: clamp(8px, 1.3vw, 18px); padding: clamp(6px, 1vw, 14px) clamp(14px, 2.6vw, 36px); font-weight: 700; font-size: clamp(15px, 3.6vw, 50px);
+            border-radius: clamp(7px, 1vmin, 13px); padding: clamp(4px, 0.8vmin, 10px) clamp(10px, 1.8vmin, 24px); font-weight: 700; font-size: clamp(13px, 2.2vmin, 23px);
         }
 
         #road-feedback {
@@ -891,6 +895,27 @@
             font-size: 14px;
             color: rgba(255,255,255,0.5);
         }
+
+        /* On-screen driving controls — shown only on touch devices while racing */
+        #touch-controls {
+            display: none;
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+            justify-content: space-between; align-items: flex-end;
+            padding: 0 22px calc(18px + env(safe-area-inset-bottom));
+            pointer-events: none;
+        }
+        #touch-controls .tc-steer, #touch-controls .tc-drive { display: flex; gap: 16px; align-items: flex-end; }
+        #touch-controls .tc-btn {
+            pointer-events: auto; touch-action: none; -webkit-user-select: none; user-select: none;
+            width: 78px; height: 78px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25);
+            font-size: 30px; color: #fff; background: rgba(40,52,92,0.5); backdrop-filter: blur(3px);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.35); -webkit-tap-highlight-color: transparent;
+        }
+        #touch-controls .tc-btn:active { transform: scale(0.9); background: rgba(90,130,230,0.75); }
+        #touch-controls .tc-gas { width: 100px; height: 100px; font-size: 40px; background: rgba(40,200,120,0.6); }
+        #touch-controls .tc-brake { width: 64px; height: 64px; font-size: 24px; background: rgba(230,90,90,0.55); }
+        #touch-controls .tc-item { width: 70px; height: 70px; font-size: 30px; background: rgba(255,190,60,0.62); }
+        @media (pointer: coarse) { body.in-race #touch-controls { display: flex; } }
     </style>
 </head>
 <body>
@@ -930,6 +955,7 @@
                 <h2>Brain Games</h2>
                 <a class="lobby-btn" id="match-btn" href="match.html" style="display:inline-block;text-decoration:none;">🃏 Pair Match</a>
                 <a class="lobby-btn" id="maze-btn" href="maze.html" style="display:inline-block;text-decoration:none;">🧩 Pair Maze</a>
+                <a class="lobby-btn" id="globe-btn" href="globe.html" style="display:inline-block;text-decoration:none;">🌍 Globe Quiz</a>
                 <a class="lobby-btn" id="practice-btn" href="test.html" style="display:inline-block;text-decoration:none;">📝 Practice Test</a>
             </div>
         </div>
@@ -1012,6 +1038,19 @@
     <div id="road-feedback"></div>
 
     <div id="instructions">WASD / Arrow Keys to drive &nbsp;|&nbsp; Space to use item &nbsp;|&nbsp; Read the question, grab the box with the right answer!</div>
+
+    <!-- On-screen driving controls for tablets / touch (shown only while racing) -->
+    <div id="touch-controls">
+        <div class="tc-steer">
+            <button class="tc-btn" data-key="ArrowLeft" aria-label="Steer left">◀</button>
+            <button class="tc-btn" data-key="ArrowRight" aria-label="Steer right">▶</button>
+        </div>
+        <div class="tc-drive">
+            <button class="tc-btn tc-item" data-key="Space" aria-label="Use item">🎁</button>
+            <button class="tc-btn tc-brake" data-key="ArrowDown" aria-label="Brake / reverse">▼</button>
+            <button class="tc-btn tc-gas" data-key="ArrowUp" aria-label="Accelerate">▲</button>
+        </div>
+    </div>
 
     <div id="quiz-overlay">
         <div id="quiz-box">

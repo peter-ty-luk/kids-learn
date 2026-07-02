@@ -118,6 +118,17 @@ h1 {
 /* big celebratory win text */
 .win .big, #cup-standings-overlay .cup-head { letter-spacing: 0.5px; }
 
+/* --- touch / tablet niceties --- */
+* { -webkit-tap-highlight-color: transparent; }
+/* manipulation = taps register instantly (no 300ms double-tap delay), no zoom on controls */
+button, .btn, .opt, .chip, .topic-chip, .mode, .tile, .room-item, .snd, .back, .leg-row, #dpad button { touch-action: manipulation; }
+.btn, .opt, .chip, .topic-chip, .mode, .tile, .snd, .back, #dpad button { -webkit-user-select: none; user-select: none; }
+/* bigger, comfier tap targets for the maze d-pad on tablets */
+@media (pointer: coarse) {
+  #dpad .pad { grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px); }
+  #dpad .pad button { font-size: 26px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   body::before { animation: none; }
   .card { animation: none; }

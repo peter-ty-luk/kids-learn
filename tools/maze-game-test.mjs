@@ -25,6 +25,23 @@ const lvl = await page.evaluate(() => ({
 }));
 check("level built: items = pairs×2, player on a floor tile", lvl.items === lvl.pairs * 2 && lvl.startFloor === 0, JSON.stringify(lvl));
 
+// labels in boxes + legend below (full text outside the maze)
+const labels = await page.evaluate(() => {
+  const its = MZ.state.items;
+  const lefts = its.filter(i => i.side === "left").map(i => i.label).sort();
+  const rights = its.filter(i => i.side === "right").map(i => i.label).sort();
+  return {
+    allLabeled: its.every(i => typeof i.label === "string" && i.label.length === 1),
+    lettersForQ: lefts.every(l => /[A-Z]/.test(l)),
+    numbersForA: rights.every(l => /[0-9]/.test(l)),
+    legendRows: document.querySelectorAll("#legend .leg-row").length,
+    legendTextShown: [...document.querySelectorAll("#legend .leg-txt")].some(t => t.textContent.length > 1),
+    nPairs: MZ.state.nPairs,
+  };
+});
+check("each box has a 1-char label (A/B… questions, 1/2… answers)", labels.allLabeled && labels.lettersForQ && labels.numbersForA, JSON.stringify(labels));
+check("legend lists full text for every label (2 per pair)", labels.legendRows === labels.nPairs * 2 && labels.legendTextShown, `rows=${labels.legendRows} pairs=${labels.nPairs}`);
+
 // maze is fully connected (every floor reachable from the player) → solvable
 const connected = await page.evaluate(() => {
   const m = MZ.state.maze, p = MZ.state.players[0];
@@ -49,22 +66,41 @@ const wallBlock = await page.evaluate(() => {
 });
 check("walls block movement", wallBlock.moved === false && wallBlock.stayed, JSON.stringify(wallBlock));
 
-// carry-one + match: teleport onto a left item (pick up), onto its right (match)
+// pickup is a deliberate PRESS now: stepping on a piece must NOT pick it up; the
+// action key (MZ.action) does. Then carry-one + match (also via the action).
 const matchFlow = await page.evaluate(() => {
   const p = MZ.state.players[0];
   const L = MZ.state.items.find(it => it.side === "left" && !it.matched);
   const R = MZ.state.items.find(it => it.side === "right" && it.pairId === L.pairId);
-  MZ.teleport(0, L.x, L.y); const carried = p.carrying && p.carrying === L;
-  // walking onto a non-partner item while carrying must NOT pick it up
+  MZ.teleport(0, L.x, L.y); const noAutoPick = !p.carrying;  // standing on it does nothing
+  MZ.action(0); const carried = p.carrying === L;            // press to pick up
+  // standing on a non-partner item while carrying must NOT pick it up...
   const other = MZ.state.items.find(it => !it.matched && !it.carried && it.pairId !== L.pairId);
   let keptCarry = true;
-  if (other) { MZ.teleport(0, other.x, other.y); keptCarry = p.carrying === L && !other.carried; MZ.teleport(0, L.x, L.y); }
-  MZ.teleport(0, R.x, R.y); const matched = L.matched && R.matched && !p.carrying && p.matched === 1;
-  return { carried, keptCarry, matched };
+  if (other) { MZ.teleport(0, other.x, other.y); MZ.action(0); keptCarry = p.carrying === L && !other.carried; MZ.teleport(0, L.x, L.y); }
+  MZ.teleport(0, R.x, R.y); MZ.action(0); const matched = L.matched && R.matched && !p.carrying && p.matched === 1;
+  return { noAutoPick, carried, keptCarry, matched };
 });
-check("picks up one piece when empty-handed", matchFlow.carried);
-check("carrying ≠ partner does NOT pick up a second piece (carry only one)", matchFlow.keptCarry);
-check("stepping the carried piece onto its partner matches the pair", matchFlow.matched);
+check("stepping on a piece does NOT auto-pick it up", matchFlow.noAutoPick);
+check("pressing the action key picks up the piece", matchFlow.carried);
+check("carrying ≠ partner: pressing on it does NOT pick up a second piece (carry only one)", matchFlow.keptCarry);
+check("pressing on the partner while carrying matches the pair", matchFlow.matched);
+
+// pop-up panel announces pick-up / match and auto-hides after 4s
+const popup = await page.evaluate(() => {
+  MZ.start(); // fresh level
+  const p = MZ.state.players[0];
+  const L = MZ.state.items.find(it => it.side === "left" && it.owner === 0);
+  const R = MZ.state.items.find(it => it.side === "right" && it.pairId === L.pairId && it.owner === 0);
+  const el = document.getElementById("maze-popup");
+  MZ.teleport(0, L.x, L.y); MZ.action(0);
+  const onPickup = el.classList.contains("show") && el.classList.contains("pickup") && /picked up/i.test(el.textContent);
+  MZ.teleport(0, R.x, R.y); MZ.action(0);
+  const onMatch = el.classList.contains("show") && el.classList.contains("match") && /matched/i.test(el.textContent);
+  return { onPickup, onMatch, hasTimer: typeof MZ.action === "function" };
+});
+check("a pop-up panel announces the pick-up", popup.onPickup, JSON.stringify(popup));
+check("a pop-up panel announces the match", popup.onMatch);
 
 // finish: match all pairs, exit locked until then, then reach exit → win
 const winFlow = await page.evaluate(() => {
@@ -76,7 +112,7 @@ const winFlow = await page.evaluate(() => {
     if (MZ.state.items.some(it => it.pairId === pid && it.matched)) continue;
     const L = MZ.state.items.find(it => it.pairId === pid && it.side === "left");
     const R = MZ.state.items.find(it => it.pairId === pid && it.side === "right");
-    MZ.teleport(0, L.x, L.y); MZ.teleport(0, R.x, R.y);
+    MZ.teleport(0, L.x, L.y); MZ.action(0); MZ.teleport(0, R.x, R.y); MZ.action(0);
   }
   const allMatched = p.matched === p.total;
   MZ.teleport(0, p.exit.x, p.exit.y);
@@ -95,7 +131,7 @@ check("traps mode spawns guards and doors", trap.guards >= 1 && trap.doors >= 1,
 const caught = await page.evaluate(() => {
   const p = MZ.state.players[0];
   // give the player a carried item, then place a guard on them and resolve catch
-  const L = MZ.state.items.find(it => it.side === "left" && !it.matched); MZ.teleport(0, L.x, L.y);
+  const L = MZ.state.items.find(it => it.side === "left" && !it.matched); MZ.teleport(0, L.x, L.y); MZ.action(0);
   const hadCarry = !!p.carrying;
   MZ.state.guards[0].x = p.x; MZ.state.guards[0].y = p.y;
   MZ.checkCatch();
@@ -137,8 +173,8 @@ const hid = await page.evaluate(() => {
   // an item not under the player and never visited → face-down (not revealed)
   const far = MZ.state.items.find(it => !(it.x === p.x && it.y === p.y));
   const hiddenAtStart = MZ.revealed(far) === false;
-  // pick up one piece, then step onto a NON-matching own piece → it peeks (reveals) but isn't picked up
-  const L = MZ.state.items.find(it => it.side === "left"); MZ.teleport(0, L.x, L.y);
+  // pick up one piece (press), then step onto a NON-matching own piece → it peeks (reveals) but isn't picked up
+  const L = MZ.state.items.find(it => it.side === "left"); MZ.teleport(0, L.x, L.y); MZ.action(0);
   const carrying = p.carrying === L;
   const other = MZ.state.items.find(it => !it.matched && !it.carried && it.pairId !== L.pairId && it.owner === 0);
   MZ.teleport(0, other.x, other.y);
@@ -160,7 +196,7 @@ check("2-player: two players with their own item sets", two.players === 2 && two
 check("2-player: separate exits", two.exitsDiffer);
 const p2win = await page.evaluate(() => {
   const p = MZ.state.players[1];
-  for (let pid = 0; pid < p.total; pid++) { const L = MZ.state.items.find(it => it.owner===1 && it.pairId===pid && it.side==="left"); const R = MZ.state.items.find(it => it.owner===1 && it.pairId===pid && it.side==="right"); MZ.teleport(1, L.x, L.y); MZ.teleport(1, R.x, R.y); }
+  for (let pid = 0; pid < p.total; pid++) { const L = MZ.state.items.find(it => it.owner===1 && it.pairId===pid && it.side==="left"); const R = MZ.state.items.find(it => it.owner===1 && it.pairId===pid && it.side==="right"); MZ.teleport(1, L.x, L.y); MZ.action(1); MZ.teleport(1, R.x, R.y); MZ.action(1); }
   MZ.teleport(1, p.exit.x, p.exit.y);
   return { winner: MZ.state.winner, status: MZ.state.status };
 });

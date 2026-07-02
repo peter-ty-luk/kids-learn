@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Globe Quiz</title>
+  <script src="lib/babylon.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script defer src="globe.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; color: #243042;
+      background: linear-gradient(160deg, #eaf3ff, #f6ecff 60%, #fff4e8); min-height: 100vh; }
+    #app { max-width: 900px; margin: 0 auto; padding: 14px 12px 60px; }
+    .top { display: flex; align-items: center; gap: 12px; margin: 6px 0 2px; }
+    .back { text-decoration: none; color: #4a5b7a; font-weight: 700; font-size: 16px; background: #fff;
+      border: 2px solid #d6e0f5; border-radius: 12px; padding: 8px 14px; }
+    .snd { width: 60px; font-size: 22px; cursor: pointer; background: #fff; border: 2px solid #d6e0f5; border-radius: 12px; padding: 6px 0; line-height: 1; }
+    .snd.off { opacity: 0.55; }
+    h1 { flex: 1; text-align: center; font-size: clamp(22px, 5vw, 32px); margin: 0; color: #2b3a55; }
+    .subtitle { text-align: center; color: #6a7790; margin: 2px 0 14px; font-size: 14px; }
+    .card { background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 10px 30px rgba(60,80,140,0.12); }
+    .label { font-weight: 800; margin: 10px 0 8px; color: #3a4a66; }
+    .label:first-child { margin-top: 0; }
+    .btn { font-size: 17px; font-family: inherit; border-radius: 14px; padding: 12px 22px; border: none;
+      background: linear-gradient(135deg, #5b8cff, #7aa0ff); color: #fff; font-weight: 800; cursor: pointer;
+      box-shadow: 0 6px 16px rgba(91,140,255,0.35); }
+    .btn:disabled { opacity: 0.45; cursor: default; }
+    .btn.ghost { background: #fff; color: #4a5b7a; border: 2px solid #d6e0f5; box-shadow: none; }
+    .opts { display: flex; flex-wrap: wrap; gap: 9px; }
+    .opt { background: #f1f5ff; border: 2px solid #d6e0f5; border-radius: 12px; padding: 9px 16px; cursor: pointer;
+      font-weight: 700; font-size: 14px; user-select: none; }
+    .opt.on { background: #dcecff; border-color: #6aa3f0; color: #1b4a86; }
+    .start-row { margin-top: 18px; display: flex; justify-content: center; }
+
+    #game { display: none; }
+    .prompt-bar { text-align: center; margin-bottom: 10px; }
+    .prompt-bar .find { font-size: clamp(18px, 3vw, 26px); font-weight: 800; color: #28406e; }
+    .prompt-bar .find b { color: #2b6cff; }
+    .prompt-bar .who { font-size: 14px; color: #6a7790; }
+    .stage { display: flex; justify-content: center; position: relative; }
+    canvas { background: #0a1330; border-radius: 16px; max-width: 100%; height: auto; touch-action: none;
+      box-shadow: 0 12px 30px rgba(20,30,70,0.35); display: block; }
+    #globe-canvas { width: 100%; max-width: 620px; aspect-ratio: 1 / 1; }
+    .hint { text-align: center; color: #8a93a8; font-size: 13px; margin-top: 8px; }
+    .actionbar { margin-top: 12px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    #scoreline { text-align: center; font-weight: 800; color: #2b6cff; margin-top: 8px; min-height: 22px; }
+
+    /* reveal + handoff + results overlays sit over the globe area */
+    .overlay { position: absolute; inset: 0; background: rgba(12,18,38,0.78); border-radius: 16px; display: none;
+      flex-direction: column; align-items: center; justify-content: center; color: #fff; text-align: center; padding: 18px; }
+    .overlay.show { display: flex; }
+    .overlay h2 { margin: 4px 0 10px; font-size: clamp(20px, 4vw, 30px); }
+    /* reveal: keep the text at the top and fade out over the globe, so the labelled
+       correct location stays visible below it */
+    #reveal { justify-content: flex-start; padding-top: 14px;
+      background: linear-gradient(to bottom, rgba(10,16,34,0.94) 0%, rgba(10,16,34,0.82) 30%, rgba(10,16,34,0.12) 54%, rgba(10,16,34,0) 100%); }
+    #reveal .rev-row { background: rgba(20,28,52,0.82); }
+    .reveal-rows { width: min(92%, 420px); }
+    .rev-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.1); border-radius: 10px;
+      padding: 8px 12px; margin-bottom: 7px; font-size: 15px; }
+    .rev-row .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+    .rev-row .nm { flex: 1; text-align: left; }
+    .rev-row .pts { font-weight: 800; }
+    .rev-row.best { box-shadow: inset 0 0 0 2px #ffd93b; }
+    .lead-row { display: flex; align-items: center; gap: 12px; width: min(92%, 420px); background: rgba(255,255,255,0.1);
+      border-radius: 12px; padding: 10px 16px; margin-bottom: 8px; font-size: 17px; }
+    .lead-row.lead { background: rgba(255,217,59,0.18); box-shadow: inset 0 0 0 2px #ffd93b; }
+    .lead-row .pos { font-weight: 800; color: #ffd93b; width: 1.6em; }
+    .lead-row .nm { flex: 1; text-align: left; font-weight: 700; }
+  </style>
+  <link rel="stylesheet" href="kids.css">
+</head>
+<body>
+  <div id="app">
+    <div class="top">
+      <a class="back" href="index.html">← Back</a>
+      <h1>🌍 Globe Quiz</h1>
+      <button id="sound-btn" class="snd" title="Sound on/off">🔊</button>
+    </div>
+    <div class="subtitle">Spin & zoom the Earth, then tap where the place is!</div>
+
+    <!-- SETUP -->
+    <div id="setup" class="card">
+      <div class="label">Players</div>
+      <div class="opts" id="opt-players">
+        <div class="opt on" data-players="1">🙂 Solo</div>
+        <div class="opt" data-players="2">2 (same device)</div>
+        <div class="opt" data-players="3">3 (same device)</div>
+        <div class="opt" data-players="4">4 (same device)</div>
+        <div class="opt" data-players="online">🌐 Online room</div>
+      </div>
+      <!-- online: create/join a room (shown when "Online room" is picked) -->
+      <div id="online-setup" style="display:none;margin-top:10px">
+        <input type="text" id="online-name" placeholder="Your name" maxlength="14"
+          style="font-size:16px;padding:9px 12px;border-radius:10px;border:2px solid #d6e0f5;width:min(60vw,220px)">
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn" id="online-create">➕ Create Room</button>
+          <input type="text" id="online-code" placeholder="CODE" maxlength="5"
+            style="font-size:16px;padding:9px 10px;border-radius:10px;border:2px solid #d6e0f5;width:96px;text-transform:uppercase;text-align:center;letter-spacing:2px">
+          <button class="btn ghost" id="online-join">Join</button>
+        </div>
+        <div id="online-error" style="color:#c0392b;margin-top:8px;font-size:14px"></div>
+      </div>
+      <div class="label">Rounds</div>
+      <div class="opts" id="opt-rounds">
+        <div class="opt" data-rounds="3">3</div>
+        <div class="opt on" data-rounds="5">5</div>
+        <div class="opt" data-rounds="8">8</div>
+      </div>
+      <div class="label">Clue</div>
+      <div class="opts" id="opt-clue">
+        <div class="opt on" data-clue="name">📝 Place name</div>
+        <div class="opt" data-clue="flag">🚩 Country flag</div>
+      </div>
+      <div class="label">Difficulty</div>
+      <div class="opts" id="opt-diff">
+        <div class="opt" data-diff="easy">🟢 Easy (famous)</div>
+        <div class="opt on" data-diff="medium">🟡 Medium</div>
+        <div class="opt" data-diff="hard">🔴 Hard (everywhere)</div>
+      </div>
+      <div class="start-row"><button id="start-btn" class="btn" disabled>Loading globe… 🌍</button></div>
+    </div>
+
+    <!-- ONLINE LOBBY -->
+    <div id="online-lobby" class="card" style="display:none">
+      <div class="label" style="text-align:center">Room Code</div>
+      <div id="lobby-code" style="font-size:36px;font-weight:900;color:#2b6cff;letter-spacing:5px;text-align:center"></div>
+      <div style="text-align:center;color:#6a7790;font-size:13px;margin-bottom:12px">Share the code — everyone on the same WiFi joins</div>
+      <div id="lobby-players"></div>
+      <div class="start-row">
+        <button class="btn" id="online-start" style="display:none">Start Quiz ▶</button>
+        <div id="online-wait" style="color:#6a7790">Waiting for the host to start…</div>
+      </div>
+      <div class="start-row" style="margin-top:8px"><button class="btn ghost" id="online-leave">Leave Room</button></div>
+    </div>
+
+    <!-- GAME -->
+    <div id="game">
+      <div class="card">
+        <div class="prompt-bar">
+          <div class="find">Find <img id="place-flag" alt="flag" style="display:none;height:36px;vertical-align:middle;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,.3)"> <b id="place-name">—</b>!</div>
+          <div class="who" id="turn-who"></div>
+          <div id="net-status" style="font-weight:800;color:#e0612d;font-size:15px;min-height:18px"></div>
+        </div>
+        <div class="stage">
+          <canvas id="globe-canvas" touch-action="none"></canvas>
+          <!-- handoff (pass the device between players) -->
+          <div class="overlay" id="handoff">
+            <h2 id="handoff-title">Player 2's turn</h2>
+            <div style="margin-bottom:16px;color:rgba(255,255,255,0.7)">Pass the device — no peeking!</div>
+            <button class="btn" id="handoff-start">I'm Ready ▶</button>
+          </div>
+          <!-- reveal (after everyone guessed this round) -->
+          <div class="overlay" id="reveal">
+            <h2 id="reveal-title">📍 It was Tokyo</h2>
+            <div class="reveal-rows" id="reveal-rows"></div>
+            <button class="btn" id="reveal-next" style="margin-top:8px">Next ▶</button>
+          </div>
+          <!-- results -->
+          <div class="overlay" id="results">
+            <div style="font-size:44px">🏆</div>
+            <h2 id="results-title">Final Scores</h2>
+            <div id="results-rows" style="width:min(92%,420px)"></div>
+            <div class="actionbar" style="margin-top:10px">
+              <button class="btn" id="results-again">Play Again ▶</button>
+              <button class="btn ghost" id="results-menu">Menu</button>
+            </div>
+          </div>
+        </div>
+        <div id="scoreline"></div>
+        <div class="hint">Drag to spin · pinch / scroll to zoom · tap the globe to drop your pin</div>
+        <div class="actionbar">
+          <button class="btn" id="lock-btn" disabled>Lock In My Guess ✓</button>
+          <button class="btn ghost" id="quit-btn">Quit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -326,6 +326,22 @@ function nextQuestion() {
   else showResults();
 }
 
+// A celebratory confetti shower for good scores (pure DOM, cleans itself up).
+function confettiBurst(n = 30) {
+  const glyphs = ["🎉", "⭐", "✨", "🎈", "💛", "💙", "💜", "🧡"];
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement("span");
+    s.className = "confetti";
+    s.textContent = glyphs[i % glyphs.length];
+    s.style.left = (Math.random() * 100) + "vw";
+    s.style.animationDuration = (1.6 + Math.random() * 1.6) + "s";
+    s.style.animationDelay = (Math.random() * 0.5) + "s";
+    s.style.fontSize = (16 + Math.random() * 14) + "px";
+    document.body.appendChild(s);
+    s.addEventListener("animationend", () => s.remove());
+  }
+}
+
 function showResults() {
   $("quiz").hidden = true; $("results").hidden = false;
   const n = STATE.questions.length, pct = n ? Math.round(STATE.score / n * 100) : 0;
@@ -333,6 +349,7 @@ function showResults() {
   $("r-score").textContent = `${STATE.score} / ${n}`;
   const emoji = pct >= 80 ? "🌟" : pct >= 50 ? "👍" : "💪";
   $("r-sub").textContent = `${pct}%  ${emoji}  ·  ${secs}s`;
+  if (pct >= 60) confettiBurst(pct >= 80 ? 40 : 24); // celebrate a good run
 
   // per-topic
   const byTopic = {};

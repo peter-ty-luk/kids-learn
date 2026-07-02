@@ -5,6 +5,9 @@
 const canvas = document.getElementById("gameCanvas");
 canvas.setAttribute("tabindex", "0");
 const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+// Render at device pixels (not CSS pixels) so the 3D is crisp on tablets/retina.
+// Capped at 1.75× so high-DPR devices don't pay a full 2-3× fill-rate cost.
+engine.setHardwareScalingLevel(1 / Math.min(window.devicePixelRatio || 1, 1.75));
 
 let playerCar = null;
 let gameKeys = {};
@@ -868,6 +871,28 @@ document.getElementById('offline-btn').addEventListener('click', () => {
     isMultiplayer = false;
     showCarSelectOverlay();
 });
+
+// ---- Touch driving controls (tablets/phones): steer/gas/brake set the same
+// gameKeys the keyboard uses; the item button replays a Space press so it goes
+// through the existing item logic. The overlay is shown by CSS only while the
+// race HUD is on screen (body.in-race), synced here via a MutationObserver. ----
+(function setupTouchControls() {
+    document.querySelectorAll('#touch-controls [data-key]').forEach((b) => {
+        const code = b.dataset.key;
+        const down = (e) => { e.preventDefault(); if (code === 'Space') window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' })); else gameKeys[code] = true; };
+        const up = (e) => { e.preventDefault(); if (code !== 'Space') gameKeys[code] = false; };
+        b.addEventListener('pointerdown', down);
+        b.addEventListener('pointerup', up);
+        b.addEventListener('pointerleave', up);
+        b.addEventListener('pointercancel', up);
+    });
+    const hud = document.getElementById('hud');
+    if (hud && window.MutationObserver) {
+        new MutationObserver(() => {
+            document.body.classList.toggle('in-race', !!hud.style.display && hud.style.display !== 'none');
+        }).observe(hud, { attributes: true, attributeFilter: ['style'] });
+    }
+})();
 
 // In the room lobby, open vehicle (and, for the host, track) selection.
 document.getElementById('lobby-pick-btn').addEventListener('click', () => {
@@ -2096,7 +2121,11 @@ const TRACKS = [
         desc: "Neon streets, hard 90° corners — mind the train!",
         points: [
             [185, 88, 0], [60, 95, 0], [42, 42, 0], [-58, 46, 0], [-78, 95, 0], [-180, 88, 0],
-            [-186, 18, 0], [-120, -14, 0], [-186, -48, 0], [-180, -95, 0], [-60, -90, 0],
+            // The left "chicane" control point used to jut in to x=-120 — tighter than
+            // the road is wide, so the inner guardrail folded ACROSS the road (a fence
+            // in the middle you could drive through). Softened to -168 so the corner
+            // radius stays ≥ the guardrail offset and the rail hugs the edge.
+            [-186, 18, 0], [-168, -14, 0], [-186, -48, 0], [-180, -95, 0], [-60, -90, 0],
             [-40, -42, 0], [58, -46, 0], [78, -95, 0], [180, -88, 0], [186, 0, 0],
         ],
         features: [
@@ -3359,7 +3388,12 @@ const createScene = async function () {
                 shadowGenerator.addShadowCaster(cm);
             });
             car.bodyMat = carMat || new BABYLON.StandardMaterial(name + "_mat", scene);
-            car.wheels = childMeshes.filter(cm => /wheel/i.test(cm.name));
+            // Only the four CORNER wheels roll. Some models (the SUV/Bruiser) carry a
+            // spare tyre meshed as "wheel-back" with no left/right side — that's a
+            // mounted decoration and must NOT spin. So require a left/right side, and
+            // only fall back to every "wheel" mesh if a model names them differently.
+            car.wheels = childMeshes.filter(cm => /wheel/i.test(cm.name) && /(left|right)/i.test(cm.name));
+            if (car.wheels.length < 2) car.wheels = childMeshes.filter(cm => /wheel/i.test(cm.name));
 
             // Babylon flips glTF handedness, so detect facing from the cloned wheel
             // positions and rotate the kart so its nose points along +Z (forward).
@@ -3606,9 +3640,31 @@ const createScene = async function () {
         return tube;
     })();
 
+    // Oil slick: a plain dark disc was near-invisible on asphalt (and totally lost
+    // on the night City Rush track). Paint an iridescent, self-lit slick so it
+    // clearly reads as OIL and shows up on any road.
     const _oilMat = new BABYLON.StandardMaterial("oilMat", scene);
-    _oilMat.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
-    _oilMat.alpha = 0.7;
+    {
+        const ot = new BABYLON.DynamicTexture("oilTex", { width: 256, height: 256 }, scene, true);
+        const c = ot.getContext(); c.clearRect(0, 0, 256, 256);
+        const cx = 128, cy = 128;
+        let g = c.createRadialGradient(cx, cy, 8, cx, cy, 122); // dark puddle, soft edges
+        g.addColorStop(0, "rgba(24,20,32,0.96)"); g.addColorStop(0.55, "rgba(16,14,22,0.92)");
+        g.addColorStop(0.85, "rgba(14,12,20,0.55)"); g.addColorStop(1, "rgba(14,12,20,0)");
+        c.fillStyle = g; c.beginPath(); c.arc(cx, cy, 122, 0, 7); c.fill();
+        for (const [col, x, y, r] of [["rgba(150,90,230,0.55)", 96, 84, 60], ["rgba(60,205,205,0.45)", 158, 150, 56], ["rgba(235,180,70,0.38)", 120, 168, 42], ["rgba(90,140,255,0.42)", 165, 96, 46]]) {
+            const s = c.createRadialGradient(x, y, 2, x, y, r); s.addColorStop(0, col); s.addColorStop(1, "rgba(0,0,0,0)"); // iridescent sheen
+            c.fillStyle = s; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+        }
+        const h = c.createRadialGradient(102, 92, 2, 102, 92, 34); h.addColorStop(0, "rgba(255,255,255,0.6)"); h.addColorStop(1, "rgba(255,255,255,0)"); // glossy highlight
+        c.fillStyle = h; c.beginPath(); c.arc(102, 92, 34, 0, 7); c.fill();
+        ot.update(); ot.hasAlpha = true;
+        _oilMat.diffuseTexture = ot; _oilMat.useAlphaFromDiffuseTexture = true;
+        _oilMat.emissiveTexture = ot; _oilMat.emissiveColor = new BABYLON.Color3(0.55, 0.55, 0.6); // self-lit — visible on dark tracks
+        _oilMat.diffuseColor = new BABYLON.Color3(0.25, 0.25, 0.25);
+        _oilMat.specularColor = new BABYLON.Color3(0.5, 0.5, 0.6); _oilMat.specularPower = 96;
+        _oilMat.backFaceCulling = false;
+    }
 
     // Soapy see-through blue for bubble traps and the around-the-kart prison.
     const _bubbleMat = new BABYLON.StandardMaterial("bubbleMat", scene);
@@ -5311,10 +5367,12 @@ const createScene = async function () {
                     mesh.isPickable = false;
                     trap.mesh = mesh;
                 } else if (trap.type === "oil") {
-                    const mesh = BABYLON.MeshBuilder.CreateDisc("trap" + i, { radius: 2.5, tessellation: 16 }, scene);
-                    mesh.position = new BABYLON.Vector3(trap.pos.x, trap.pos.y, trap.pos.z);
+                    const mesh = BABYLON.MeshBuilder.CreateDisc("trap" + i, { radius: 3.2, tessellation: 24 }, scene);
+                    mesh.position = new BABYLON.Vector3(trap.pos.x, trap.pos.y + 0.02, trap.pos.z);
                     mesh.rotation.x = -Math.PI / 2;
                     mesh.material = _oilMat;
+                    mesh.isPickable = false;
+                    mesh.scaling.setAll(0.3); trap._grow = 0; // splash out to full size so the drop is obvious
                     trap.mesh = mesh;
                 } else if (trap.type === "bubble") {
                     const mesh = BABYLON.MeshBuilder.CreateSphere("trap" + i, { diameter: 1.8, segments: 10 }, scene);
@@ -5337,6 +5395,11 @@ const createScene = async function () {
             // Loose bubbles bob gently in the air while they wait for a victim.
             if (trap.type === "bubble" && trap.mesh) {
                 trap.mesh.position.y = trap.pos.y + 0.5 + Math.sin(gameTime * 0.06 + i) * 0.18;
+            }
+            // Fresh oil splashes out to full size (a quick "drop" tell).
+            if (trap.type === "oil" && trap.mesh && trap._grow < 1) {
+                trap._grow = Math.min(1, trap._grow + 0.14);
+                trap.mesh.scaling.setAll(0.3 + 0.7 * trap._grow);
             }
 
             if (trap.lifetime <= 0) {

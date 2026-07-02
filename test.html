@@ -92,7 +92,13 @@
     .miss .a .right { color: #176c3c; }
     [hidden] { display: none !important; }
     @media (max-width: 480px) { .choices { grid-template-columns: 1fr; } h1 { font-size: 25px; } .prompt { font-size: 20px; } }
+    /* results confetti (spawned by JS, removes itself) */
+    .confetti { position: fixed; top: -24px; z-index: 90; pointer-events: none; font-size: 22px; animation: confFall linear forwards; }
+    @keyframes confFall { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(105vh) rotate(560deg); opacity: 0.75; } }
   </style>
+  <!-- playful shared theme (Fredoka font, bubble background, chunky buttons) —
+       loaded AFTER the base styles so it overrides them, same as the other games -->
+  <link rel="stylesheet" href="kids.css">
 </head>
 <body>
   <div id="app">

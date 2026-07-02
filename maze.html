@@ -53,9 +53,25 @@
     .pbox .pscore { font-size: 13px; color: #6a7790; margin-top: 2px; }
     .pbox .pscore b { color: #2b6cff; }
 
-    .stage { display: flex; justify-content: center; }
-    canvas { background: #3a2f7a; border-radius: 18px; max-width: 100%; height: auto; touch-action: none;
-      box-shadow: 0 12px 30px rgba(70,55,150,0.3); }
+    .stage { display: flex; justify-content: center; position: relative; }
+    /* pop-up panel announcing a pick-up / match (auto-hides after 4s) */
+    #maze-popup { position: absolute; top: 14px; left: 50%; z-index: 40; pointer-events: none;
+      transform: translateX(-50%) translateY(-10px) scale(0.94); opacity: 0;
+      transition: opacity .18s ease, transform .18s ease;
+      background: #fff; border: 3px solid #8fb6ff; border-radius: 18px; padding: 13px 20px;
+      min-width: 220px; max-width: 88%; text-align: center; box-shadow: 0 12px 34px rgba(30,40,80,0.32); }
+    #maze-popup.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    #maze-popup.pickup { border-color: #6aa3f0; }
+    #maze-popup.match { border-color: #58c47a; }
+    #maze-popup .mp-title { font-weight: 800; font-size: clamp(16px,2.4vw,20px); color: #28406e; }
+    #maze-popup .mp-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px;
+      padding: 0 7px; border-radius: 8px; background: linear-gradient(135deg,#5b8cff,#7aa0ff); color: #fff; font-weight: 800; margin: 0 3px; vertical-align: middle; }
+    #maze-popup.match .mp-badge { background: linear-gradient(135deg,#36c46f,#5fe08a); }
+    #maze-popup .mp-text { color: #3a4a66; font-size: clamp(14px,2vw,16px); margin-top: 6px; }
+    #maze-popup .mp-prog { color: #8a93a8; font-size: 13px; margin-top: 5px; font-weight: 700; }
+    canvas { background: #14111f; border-radius: 14px; max-width: 100%; height: auto; touch-action: none;
+      image-rendering: pixelated;
+      border: 6px solid #2c2740; box-shadow: 0 12px 30px rgba(20,15,40,0.5), inset 0 0 0 2px #423b5e; }
     .msg { text-align: center; min-height: 24px; font-weight: 800; color: #2b6cff; margin: 8px 0 4px; }
     .controls-hint { text-align: center; color: #8a93a8; font-size: 13px; margin-top: 6px; }
     .roundbar { margin-top: 12px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
@@ -66,6 +82,21 @@
     #win-overlay .panel { background: #fff; border-radius: 22px; padding: 30px 34px; text-align: center; max-width: 90vw; }
     #win-overlay .wbig { font-size: clamp(26px, 6vw, 44px); font-weight: 900; color: #2bb673; margin: 4px 0 8px; }
     #win-overlay .wsub { color: #44557a; font-size: 17px; margin-bottom: 18px; }
+
+    /* legend: maps the A/B/1/2 labels in the maze to the full pairing text */
+    #legend { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+    .leg-col { flex: 1 1 280px; min-width: 240px; max-width: 420px; }
+    .leg-h { font-weight: 800; font-size: 15px; margin-bottom: 6px; color: #6a4bff; }
+    .leg-row { display: flex; align-items: center; gap: 9px; padding: 5px 6px; border-radius: 10px; }
+    .leg-row + .leg-row { border-top: 1px solid #eef0f8; }
+    .leg-lab { flex: none; width: 26px; height: 26px; border-radius: 8px; display: inline-flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 15px; color: #fff; }
+    .leg-q .leg-lab { background: linear-gradient(135deg, #f0a04b, #ffb86b); }   /* question letters */
+    .leg-a .leg-lab { background: linear-gradient(135deg, #34c46f, #6fe09a); }   /* answer numbers */
+    .leg-txt { font-size: 15px; color: #2c3653; line-height: 1.25; }
+    .leg-row.done { opacity: 0.42; }
+    .leg-row.done .leg-txt { text-decoration: line-through; }
+    .leg-txt.hidden-q { color: #aab2c6; letter-spacing: 2px; }
 
     /* on-screen dpad (touch) */
     #dpad { display: none; justify-content: center; gap: 8px; margin-top: 12px; }
@@ -117,7 +148,8 @@
       <div class="card">
         <div class="hud" id="hud"></div>
         <div class="msg" id="msg"></div>
-        <div class="stage"><canvas id="maze-canvas" width="600" height="600"></canvas></div>
+        <div class="stage"><canvas id="maze-canvas" width="600" height="600"></canvas><div id="maze-popup"></div></div>
+        <div id="legend"></div>
         <div id="dpad">
           <div class="pad" data-pad="1">
             <span></span><button data-dir="up">▲</button><span></span>

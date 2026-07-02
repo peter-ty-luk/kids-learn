@@ -200,10 +200,12 @@ function renderBoard() {
   const board = $('board');
   board.innerHTML = '';
   board.style.setProperty('--cols', chooseCols(state.cards.length));
-  state.cards.forEach((card) => {
+  state.cards.forEach((card, idx) => {
     const tile = document.createElement('div');
     const faceUp = state.mode === 'easy';
-    tile.className = 'tile ' + (faceUp ? 'up' : 'down') + ' side-' + card.side;
+    tile.className = 'tile deal ' + (faceUp ? 'up' : 'down') + ' side-' + card.side;
+    tile.style.animationDelay = (idx * 0.045) + 's'; // staggered deal-in
+    tile.addEventListener('animationend', function onDeal(e) { if (e.animationName === 'dealIn') { tile.classList.remove('deal'); tile.style.animationDelay = ''; tile.removeEventListener('animationend', onDeal); } });
     const content = document.createElement('div');
     content.className = 'content';
     renderContent(content, card.content);
@@ -281,8 +283,25 @@ function checkPair() {
   }
 }
 
+// A celebratory confetti shower (pure DOM, cleans itself up after falling).
+function confettiBurst(n = 34) {
+  const glyphs = ['🎉', '⭐', '✨', '🎈', '💛', '💙', '💜', '🧡'];
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('span');
+    s.className = 'confetti';
+    s.textContent = glyphs[i % glyphs.length];
+    s.style.left = (Math.random() * 100) + 'vw';
+    s.style.animationDuration = (1.6 + Math.random() * 1.6) + 's';
+    s.style.animationDelay = (Math.random() * 0.5) + 's';
+    s.style.fontSize = (16 + Math.random() * 14) + 'px';
+    document.body.appendChild(s);
+    s.addEventListener('animationend', () => s.remove());
+  }
+}
+
 function winRound() {
   Sound.play('win', 0.8);
+  confettiBurst();
   // A little reward: stars scale with efficiency (fewer tries = better).
   const perfect = state.set.pairs.length;
   const stars = state.moves <= perfect ? '⭐⭐⭐' : state.moves <= perfect + 2 ? '⭐⭐' : '⭐';
