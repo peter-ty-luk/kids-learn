@@ -200,6 +200,73 @@ app.get('/quiz/pairs', (req, res) => {
   res.json({ sets, subjects, count: sets.length });
 });
 
+// ---- /quiz/mcq — a unified multiple-choice feed for the coin-earning games
+// (Tower Quiz Defense, and anything else that wants quick MCQs). Built READ-ONLY
+// from the sibling ../quiz bank; every question is normalised to
+// { id, prompt, choices[4?], answer, diff:1|2|3, topic, subject }.
+// diff comes from the bank's own difficulty field (1..3) so "harder question
+// earns higher coin" maps directly.
+function plainText(v) {
+  if (typeof v === 'string') return v.includes('$') ? null : v;
+  // object prompts may carry math/image/audio parts the canvas games can't show —
+  // only accept ones that are PURELY text
+  if (v && typeof v.text === 'string' && !v.math && !v.image && !v.audio && !v.figure) return v.text.includes('$') ? null : v.text;
+  return null;
+}
+function shuffleArr(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function loadMcq() {
+  let files = [];
+  try { files = fs.readdirSync(QUIZ_DIR).filter((f) => f.endsWith('.json') && f !== 'index.json'); }
+  catch { return []; }
+  const all = [];
+  for (const f of files) {
+    try { const arr = JSON.parse(fs.readFileSync(path.join(QUIZ_DIR, f), 'utf8')); if (Array.isArray(arr)) all.push(...arr); }
+    catch { /* skip a malformed file */ }
+  }
+  const out = [];
+  const clampDiff = (d, fallback) => (d === 1 || d === 2 || d === 3) ? d : fallback;
+  for (const q of all) {
+    if (q.generate) continue;
+    const prompt = plainText(q.prompt);
+    if (!prompt) continue;
+    const base = { id: q.id, topic: q.topic || 'general', subject: q.subject || '' };
+    if (q.type === 'multiple_choice' && Array.isArray(q.choices) && q.choices.length >= 2) {
+      const choices = q.choices.map((c) => plainText(c)).filter((c) => c != null).map(String);
+      const answer = String(q.answer);
+      if (choices.length >= 2 && choices.includes(answer)) out.push({ ...base, prompt, choices, answer, diff: clampDiff(q.difficulty, 2) });
+    } else if (q.type === 'true_false') {
+      const answer = (q.answer === true || String(q.answer).toLowerCase() === 'true') ? 'True' : 'False';
+      out.push({ ...base, prompt, choices: ['True', 'False'], answer, diff: clampDiff(q.difficulty, 1) });
+    } else if (q.type === 'match' && Array.isArray(q.pairs)) {
+      // "What goes with X?" — distractors are other rights from the SAME set.
+      const pairs = q.pairs.map((p) => ({ left: plainText(p.left), right: plainText(p.right) })).filter((p) => p.left && p.right);
+      if (pairs.length >= 4) {
+        for (const p of pairs) {
+          const others = shuffleArr(pairs.filter((o) => o.right !== p.right).map((o) => o.right)).slice(0, 3);
+          if (others.length < 3) continue;
+          out.push({ ...base, id: `${q.id}-${p.left.slice(0, 12)}`, prompt: `What goes with “${p.left}”?`, choices: shuffleArr([p.right, ...others]), answer: p.right, diff: clampDiff(q.difficulty, 1) });
+        }
+      }
+    } else if (q.type === 'short_answer' && (typeof q.answer === 'string' || typeof q.answer === 'number')) {
+      const answer = String(q.answer);
+      const n = Number(answer);
+      let distractors;
+      if (Number.isFinite(n) && answer.trim() !== '') {
+        const step = Math.max(1, Math.round(Math.abs(n) * 0.12));
+        distractors = [...new Set([n + step, n - step, n + step * 2 + 1].map(String))].filter((d) => d !== answer);
+      } else {
+        distractors = shuffleArr(all.filter((o) => o !== q && o.type === 'short_answer' && o.topic === q.topic && typeof o.answer === 'string').map((o) => String(o.answer))).slice(0, 3);
+      }
+      if (distractors.length >= 2) out.push({ ...base, prompt, choices: shuffleArr([answer, ...distractors.slice(0, 3)]), answer, diff: clampDiff(q.difficulty, 3) });
+    }
+  }
+  return out;
+}
+app.get('/quiz/mcq', (req, res) => {
+  const questions = loadMcq();
+  res.json({ questions, count: questions.length, byDiff: { 1: questions.filter((q) => q.diff === 1).length, 2: questions.filter((q) => q.diff === 2).length, 3: questions.filter((q) => q.diff === 3).length } });
+});
+
 app.use(express.static(path.join(__dirname)));
 
 // How long a dropped player's slot (and their car) is held open for a reconnect

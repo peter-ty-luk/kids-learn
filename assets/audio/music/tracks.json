@@ -1,42 +1,156 @@
 [
   {
-    "file": "01-street-racing.mp3",
-    "title": "Street Racing"
+    "file": "15-motivation-epic-rock.mp3",
+    "title": "Motivation Epic Rock",
+    "tag": "action",
+    "bpm": 167,
+    "energy": 0.807
   },
   {
     "file": "02-racing-car-automotive-music.mp3",
-    "title": "Racing Car Automotive Music"
+    "title": "Racing Car Automotive Music",
+    "tag": "racing",
+    "bpm": 194,
+    "energy": 0.772
   },
   {
-    "file": "03-action-racing-speed-music.mp3",
-    "title": "Action Racing Speed Music"
-  },
-  {
-    "file": "04-drift-drifting-racing-music.mp3",
-    "title": "Drift Drifting Racing Music"
-  },
-  {
-    "file": "05-racing-car-automotive-music.mp3",
-    "title": "Racing Car Automotive Music"
-  },
-  {
-    "file": "06-car-racing-automotive-music.mp3",
-    "title": "Car Racing Automotive Music"
-  },
-  {
-    "file": "07-car-racing-automotive-music.mp3",
-    "title": "Car Racing Automotive Music"
-  },
-  {
-    "file": "08-car.mp3",
-    "title": "Car"
-  },
-  {
-    "file": "09-fast.mp3",
-    "title": "Fast"
+    "file": "21-epic-cinematic-bold-drums.mp3",
+    "title": "Epic Cinematic Bold Drums",
+    "tag": "battle",
+    "bpm": 188,
+    "energy": 0.738
   },
   {
     "file": "10-sport.mp3",
-    "title": "Sport"
+    "title": "Sport",
+    "tag": "racing",
+    "bpm": 97,
+    "energy": 0.643
+  },
+  {
+    "file": "12-game-level-pixel-quest-loop.mp3",
+    "title": "Game Level Pixel Quest Loop",
+    "tag": "arcade",
+    "bpm": 150,
+    "energy": 0.633
+  },
+  {
+    "file": "19-rock-rock-music.mp3",
+    "title": "Rock - Rock Music",
+    "tag": "action",
+    "bpm": 113,
+    "energy": 0.624
+  },
+  {
+    "file": "20-indie-rock-hype.mp3",
+    "title": "Indie Rock Hype",
+    "tag": "action",
+    "bpm": 122,
+    "energy": 0.617
+  },
+  {
+    "file": "04-drift-drifting-racing-music.mp3",
+    "title": "Drift Drifting Racing Music",
+    "tag": "racing",
+    "bpm": 81,
+    "energy": 0.613
+  },
+  {
+    "file": "22-epic.mp3",
+    "title": "Epic",
+    "tag": "battle",
+    "bpm": 158,
+    "energy": 0.602
+  },
+  {
+    "file": "07-car-racing-automotive-music.mp3",
+    "title": "Car Racing Automotive Music",
+    "tag": "racing",
+    "bpm": 107,
+    "energy": 0.594
+  },
+  {
+    "file": "05-racing-car-automotive-music.mp3",
+    "title": "Racing Car Automotive Music",
+    "tag": "racing",
+    "bpm": 87,
+    "energy": 0.591
+  },
+  {
+    "file": "09-fast.mp3",
+    "title": "Fast",
+    "tag": "racing",
+    "bpm": 120,
+    "energy": 0.567
+  },
+  {
+    "file": "03-action-racing-speed-music.mp3",
+    "title": "Action Racing Speed Music",
+    "tag": "racing",
+    "bpm": 95,
+    "energy": 0.564
+  },
+  {
+    "file": "06-car-racing-automotive-music.mp3",
+    "title": "Car Racing Automotive Music",
+    "tag": "racing",
+    "bpm": 70,
+    "energy": 0.522
+  },
+  {
+    "file": "16-energetic-action-sport.mp3",
+    "title": "Energetic Action Sport",
+    "tag": "action",
+    "bpm": 67,
+    "energy": 0.508
+  },
+  {
+    "file": "17-action-sport-music.mp3",
+    "title": "Action Sport Music",
+    "tag": "action",
+    "bpm": 60,
+    "energy": 0.504
+  },
+  {
+    "file": "18-indie-rock-energetic.mp3",
+    "title": "Indie Rock Energetic",
+    "tag": "action",
+    "bpm": 63,
+    "energy": 0.504
+  },
+  {
+    "file": "14-zt-byte-blast.mp3",
+    "title": "ZT - Byte Blast",
+    "tag": "arcade",
+    "bpm": 63,
+    "energy": 0.501
+  },
+  {
+    "file": "13-funky-friday-night-chiptune-.mp3",
+    "title": "Funky Friday Night - chiptune upbeat electronic synth 90s ha",
+    "tag": "arcade",
+    "bpm": 67,
+    "energy": 0.482
+  },
+  {
+    "file": "11-retro-arcade-game-music.mp3",
+    "title": "Retro Arcade Game Music",
+    "tag": "arcade",
+    "bpm": 128,
+    "energy": 0.475
+  },
+  {
+    "file": "01-street-racing.mp3",
+    "title": "Street Racing",
+    "tag": "racing",
+    "bpm": 67,
+    "energy": 0.468
+  },
+  {
+    "file": "08-car.mp3",
+    "title": "Car",
+    "tag": "racing",
+    "bpm": 64,
+    "energy": 0.456
   }
 ]

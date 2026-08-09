@@ -50,6 +50,46 @@ function showRoadFeedback(text, color, duration) {
     _roadFeedbackTimer = setTimeout(() => { el.style.opacity = "0"; }, duration || 750);
 }
 
+// ------------------------------------------------------------
+// "Who hit me?" — every attack records its attacker on the victim so the
+// player can see who to chase down instead of guessing.
+// ------------------------------------------------------------
+let _revengeTimer = null;
+const HIT_BLAME = {
+    lightning: ["⚡", "Zapped by"],
+    fireball: ["🔥", "Blasted by"],
+    banana: ["🍌", "Slipped on a banana from"],
+    oil: ["🛢️", "Oiled by"],
+    bubble: ["🫧", "Bubbled by"],
+    fog: ["💨", "Gassed by"],
+    tornado: ["🌪️", "Spun by"],
+    bump: ["💥", "Rammed by"],
+};
+function carLabel(c) {
+    if (!c) return "someone";
+    if (c._label) return c._label;
+    if (/^ai(\d+)$/.test(c.name || "")) return "Rival " + (Number(RegExp.$1) + 1);
+    return c.name || "someone";
+}
+function showRevenge(text) {
+    const el = document.getElementById("revenge-banner");
+    if (!el) return;
+    el.textContent = text;
+    el.style.opacity = "1";
+    clearTimeout(_revengeTimer);
+    _revengeTimer = setTimeout(() => { el.style.opacity = "0"; }, 3200);
+}
+// victim: the car that got hit. attacker: the car responsible (may be null for
+// scenery). kind: a key of HIT_BLAME.
+function creditHit(victim, attacker, kind) {
+    if (!victim || !attacker || attacker === victim) return;
+    victim._lastHitBy = { car: attacker, label: carLabel(attacker), kind };
+    if (typeof playerCar !== "undefined" && victim === playerCar) {
+        const [icon, verb] = HIT_BLAME[kind] || ["💫", "Hit by"];
+        showRevenge(`${icon} ${verb} ${carLabel(attacker)}!`);
+    }
+}
+
 // ============================================================
 // ASSET LOADING SYSTEM
 // ============================================================
@@ -1013,7 +1053,9 @@ const FALLBACK_QUESTIONS = [
 
 function isInGameQuestion(q) {
     return Array.isArray(q.choices) && q.choices.length >= 2 && !q.figure && !q.math &&
-        (q.time == null || q.time <= IN_GAME_MAX_TIME);
+        (q.time == null || q.time <= IN_GAME_MAX_TIME) &&
+        // has to be readable at racing speed, and short enough to fit a door label
+        String(q.prompt).length <= 90 && q.choices.every(c => String(c).length <= 22);
 }
 
 function normalizeQuestions(list) {
@@ -1023,22 +1065,36 @@ function normalizeQuestions(list) {
 }
 
 function loadQuestions() {
-    fetch("questions/index.json")
+    const local = fetch("questions/index.json")
         .then(r => r.json())
         .then(topics => Promise.all(topics.map(t =>
             fetch(`questions/${t}.json`).then(r => r.json()).catch(() => []))))
-        .then(lists => {
-            allQuestions = normalizeQuestions([].concat(...lists));
-            mcQuestions = allQuestions.filter(isInGameQuestion);
-            typingQuestions = allQuestions.filter(q => !q.choices);
-            if (mcQuestions.length === 0) mcQuestions = normalizeQuestions(FALLBACK_QUESTIONS);
-            questionsLoaded = true;
-        })
-        .catch(() => {
-            allQuestions = normalizeQuestions(FALLBACK_QUESTIONS);
-            mcQuestions = allQuestions.slice();
-            questionsLoaded = true;
+        .then(lists => [].concat(...lists))
+        .catch(() => []);
+    // The handful of questions shipped here came round again every few laps, so
+    // the bank is topped up from the sibling quiz project (same feed the tower and
+    // dodge games use). Best-effort: if that project isn't there we just race on
+    // the local set.
+    const shared = fetch("/quiz/mcq")
+        .then(r => r.json())
+        .then(d => (d.questions || []).map(q => ({ topic: q.topic || "quiz", prompt: q.prompt, answer: q.answer, choices: q.choices })))
+        .catch(() => []);
+
+    Promise.all([local, shared]).then(([a, b]) => {
+        const merged = normalizeQuestions([...a, ...b]);
+        const seen = new Set();
+        allQuestions = merged.filter(q => {
+            const k = String(q.prompt).trim().toLowerCase();
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
         });
+        mcQuestions = allQuestions.filter(isInGameQuestion);
+        typingQuestions = allQuestions.filter(q => !q.choices);
+        if (mcQuestions.length === 0) { allQuestions = normalizeQuestions(FALLBACK_QUESTIONS); mcQuestions = allQuestions.slice(); }
+        questionsLoaded = true;
+        window._questionPool = { total: allQuestions.length, inGame: mcQuestions.length }; // for tools/tests
+    });
 }
 
 loadQuestions();
@@ -2148,9 +2204,11 @@ const TRACKS = [
         icon: "🏎️",
         desc: "Chicanes, a hairpin and grandstand crowds",
         points: [
+            // The hairpin here used to turn tighter than the road is wide, which folded
+            // the inner guardrail across the track (tools/rail-fold-check.mjs).
             [190, 40, 0], [120, 72, 0], [40, 60, 0], [-30, 82, 0], [-120, 72, 0], [-180, 40, 0],
             [-188, -8, 0], [-142, -32, 0], [-100, -10, 0], [-58, -32, 0], [-18, -10, 0],
-            [22, -42, 0], [-8, -72, 0], [62, -96, 0], [140, -82, 0], [186, -42, 0],
+            [16, -44, 0], [19, -63, 0], [62, -96, 0], [140, -82, 0], [186, -42, 0],
         ],
         features: [
             { type: "boost", at: 0.02, lane: 0 },
@@ -2191,8 +2249,8 @@ const TRACKS = [
         desc: "Climb the summit, slide down — ice everywhere",
         points: [
             [180, 80, 0], [80, 100, 3], [-20, 92, 8], [-110, 100, 14], [-180, 70, 18],
-            [-190, 0, 21], [-150, -62, 15], [-60, -92, 9], [28, -72, 5], [58, -22, 8],
-            [110, -42, 4], [180, -70, 0],
+            [-190, 0, 21], [-150, -62, 15], [-60, -92, 9], [28, -72, 5], [59, -23, 8],
+            [110, -42, 4], [167, -52, 0],
         ],
         features: [
             { type: "tunnel", from: 0.36, to: 0.48, style: "snow" },
@@ -2214,8 +2272,8 @@ const TRACKS = [
         icon: "🍳",
         desc: "Shrunk down! Race the table among giant snacks",
         points: [
-            [150, 70, 0], [60, 82, 0], [22, 30, 2], [-40, 86, 4], [-120, 76, 0], [-152, 20, 0],
-            [-100, -20, 3], [-142, -70, 0], [-60, -86, 0], [0, -42, 5], [60, -86, 0], [150, -60, 0],
+            [150, 70, 0], [60, 82, 0], [21, 50, 2], [-40, 86, 4], [-120, 76, 0], [-152, 20, 0],
+            [-100, -20, 3], [-107, -57, 0], [-60, -86, 0], [0, -42, 5], [60, -86, 0], [150, -60, 0],
         ],
         features: [
             { type: "tunnel", from: 0.55, to: 0.64, style: "cheese" },
@@ -3836,6 +3894,7 @@ const createScene = async function () {
             const networkCar = createCar(color, "net" + idx, carModel);
             placeOnGrid(networkCar, slotOf(player.id));
             networkCar._playerId = player.id;
+            networkCar._label = player.name || ("Player " + (idx + 2));
             networkCar._targetPos = { x: networkCar.pos.x, y: networkCar.pos.y, z: networkCar.pos.z };
             networkCar._targetRotY = networkCar.rotY;
             networkCars.push(networkCar);
@@ -3899,6 +3958,19 @@ const createScene = async function () {
     }
     window._allCars = allCars; // exposed for tools/headless tests
     window._getItemRows = () => itemRows; // exposed for tools/headless tests (defined below)
+
+    const GATE_CHANCE = 0.45;  // how often a question row is served as a wall
+    const GATE_STYLES = [
+        { name: "Castle Gate", wall: [0.60, 0.30, 0.24], trim: [0.42, 0.26, 0.15], glow: 0.05, cap: "🏰" },
+        { name: "Ice Wall", wall: [0.62, 0.84, 0.95], trim: [0.30, 0.58, 0.82], glow: 0.16, cap: "❄️" },
+        { name: "Candy Wall", wall: [0.96, 0.46, 0.70], trim: [0.55, 0.18, 0.40], glow: 0.12, cap: "🍬" },
+        { name: "Jungle Gate", wall: [0.26, 0.56, 0.26], trim: [0.34, 0.24, 0.12], glow: 0.05, cap: "🌿" },
+        { name: "Energy Gate", wall: [0.34, 0.26, 0.82], trim: [0.62, 0.32, 1.00], glow: 0.34, cap: "🚀" },
+        { name: "Sand Gate", wall: [0.85, 0.72, 0.42], trim: [0.55, 0.42, 0.20], glow: 0.05, cap: "🏜️" },
+    ];
+    const GATE_HALF = 21;      // wall reaches past both guardrails — no driving round it
+    const GATE_DOOR_W = 7.2;   // clear opening per door
+    const GATE_H = 5.4;
 
     // ============================================================
     // ITEM BOXES
@@ -3966,6 +4038,13 @@ const createScene = async function () {
         r.questionText = q.question;
         r.choiceTexts = choices.slice(0, n); // in lane order (left → right)
 
+        // Serve this question as a wall of doors instead of floating boxes now and
+        // then. Same question, same place, same cadence — just a harsher way to
+        // answer it. Decided fresh on every respawn so a lap is never predictable.
+        r.kind = Math.random() < GATE_CHANCE ? "gate" : "boxes";
+        if (r.kind === "gate") { buildRowGate(r); return; }
+        clearRowGate(r);
+
         r.boxes.forEach((bi, j) => {
             const box = itemBoxes[bi];
             const used = j < n;
@@ -4006,7 +4085,7 @@ const createScene = async function () {
 
         // trackIndex lets the dashboard show the row the player is driving INTO
         // (next one ahead along the track), so its boxes match the shown choices.
-        const rowObj = { boxes: [], correctIdx: 0, respawnTimer: 0, trackIndex: tIdx };
+        const rowObj = { idx: row, boxes: [], correctIdx: 0, respawnTimer: 0, trackIndex: tIdx, kind: "boxes", gate: null, gateMeshes: [] };
 
         for (let j = 0; j < BOXES_PER_ROW; j++) {
             const i = row * BOXES_PER_ROW + j;
@@ -4053,6 +4132,183 @@ const createScene = async function () {
 
         itemRows.push(rowObj);
         assignRowQuiz(rowObj);
+    }
+
+    // ============================================================
+    // ANSWER GATES — a quiz row served as a wall of doors
+    // ============================================================
+    // A question row is served one of two ways, decided fresh each time the row
+    // respawns: the usual floating item boxes, or a WALL across the road with one
+    // labelled doorway per answer. Same questions, same cadence — but on a wall
+    // row you can't just ignore it: drive through the right door and you collect
+    // the item as usual, pick a wrong one (or smack a pillar) and you crash, see
+    // stars, and come to on the far side.
+
+
+    // Wall pieces belong to the row that owns them, so a row can switch between
+    // "boxes" and "gate" every time it respawns.
+    function clearRowGate(r) {
+        if (r.gateMeshes) for (const m of r.gateMeshes) m.dispose();
+        r.gateMeshes = [];
+        r.gate = null;
+    }
+
+    function buildRowGate(r) {
+        clearRowGate(r);
+        const choices = r.choiceTexts;
+        const n = choices.length;
+        const styleIdx = Math.floor(Math.random() * GATE_STYLES.length);
+        const style = GATE_STYLES[styleIdx];
+        r.styleIdx = styleIdx;
+
+        const pt = trackPoints[r.trackIndex];
+        const nextPt = trackPoints[(r.trackIndex + 1) % numPoints];
+        const ang = Math.atan2(nextPt.z - pt.z, nextPt.x - pt.x);
+        const g = {
+            pt,
+            fx: Math.cos(ang), fz: Math.sin(ang),      // along the road
+            px: -Math.sin(ang), pz: Math.cos(ang),     // across it (+ = the player's left)
+            doors: [],
+        };
+        const spacing = (GATE_HALF * 2 - 3) / n;
+        for (let j = 0; j < n; j++) g.doors.push(((n - 1) / 2 - j) * spacing);
+        r.gate = g;
+        r.gateMeshes = [];
+
+        const wallMat = new BABYLON.StandardMaterial("gateWallMat" + r.idx, scene);
+        wallMat.diffuseColor = new BABYLON.Color3(...style.wall);
+        wallMat.emissiveColor = new BABYLON.Color3(style.wall[0] * style.glow, style.wall[1] * style.glow, style.wall[2] * style.glow);
+        wallMat.specularColor = new BABYLON.Color3(0.15, 0.15, 0.15);
+        const trimMat = new BABYLON.StandardMaterial("gateTrimMat" + r.idx, scene);
+        trimMat.diffuseColor = new BABYLON.Color3(...style.trim);
+        trimMat.emissiveColor = new BABYLON.Color3(style.trim[0] * 0.3, style.trim[1] * 0.3, style.trim[2] * 0.3);
+
+        // `faceCamera` meshes must keep their own rotation untouched — setting
+        // rotation.y on a billboarded plane fights the billboard and leaves some
+        // labels edge-on or back-to-front.
+        const place = (mesh, lat, y, faceCamera) => {
+            mesh.position = new BABYLON.Vector3(pt.x + g.px * lat, pt.y + y, pt.z + g.pz * lat);
+            if (!faceCamera) mesh.rotation.y = Math.atan2(g.fx, g.fz);
+            mesh.isPickable = false;
+            r.gateMeshes.push(mesh);
+        };
+
+        // Solid wall fills everything the doorways don't.
+        const openings = g.doors.map(c => [c - GATE_DOOR_W / 2, c + GATE_DOOR_W / 2]).sort((a, b) => a[0] - b[0]);
+        let cursor = -GATE_HALF;
+        const solids = [];
+        for (const [a, b] of openings) { if (a > cursor) solids.push([cursor, a]); cursor = Math.max(cursor, b); }
+        if (cursor < GATE_HALF) solids.push([cursor, GATE_HALF]);
+        for (const [a, b] of solids) {
+            const w = b - a;
+            if (w < 0.2) continue;
+            const seg = BABYLON.MeshBuilder.CreateBox("gateSeg", { width: w, height: GATE_H, depth: 1.6 }, scene);
+            seg.material = wallMat;
+            place(seg, (a + b) / 2, GATE_H / 2);
+            shadowGenerator.addShadowCaster(seg);
+        }
+        const beam = BABYLON.MeshBuilder.CreateBox("gateBeam", { width: GATE_HALF * 2, height: 1.3, depth: 2.0 }, scene);
+        beam.material = trimMat;
+        place(beam, 0, GATE_H + 0.65);
+
+        // One answer label hanging in each doorway.
+        g.doors.forEach((lat, j) => {
+            const tex = new BABYLON.DynamicTexture("gateLbl" + r.idx + "_" + j, { width: 320, height: 120 }, scene, true);
+            const c2 = tex.getContext();
+            c2.fillStyle = "rgba(10, 14, 34, 0.92)"; c2.fillRect(0, 0, 320, 120);
+            c2.strokeStyle = "#ffd93b"; c2.lineWidth = 6; c2.strokeRect(4, 4, 312, 112);
+            const text = String(choices[j]);
+            const size = text.length <= 4 ? 74 : text.length <= 8 ? 52 : text.length <= 14 ? 36 : 26;
+            tex.drawText(text, null, 60 + size * 0.36, `bold ${size}px Arial`, "#ffffff", null, true);
+            const mat = new BABYLON.StandardMaterial("gateLblMat" + r.idx + "_" + j, scene);
+            mat.emissiveTexture = tex; mat.diffuseColor = new BABYLON.Color3(0, 0, 0);
+            mat.specularColor = new BABYLON.Color3(0, 0, 0); mat.disableLighting = true; mat.backFaceCulling = false;
+            const pl = BABYLON.MeshBuilder.CreatePlane("gateLblPl" + r.idx + "_" + j, { width: 6.4, height: 2.4 }, scene);
+            pl.material = mat;
+            pl.billboardMode = BABYLON.Mesh.BILLBOARDMODE_Y;
+            glowLayer.addExcludedMesh(pl);
+            place(pl, lat, GATE_H * 0.62, true);
+        });
+
+        // Hide this row's boxes — the wall replaces them entirely.
+        r.boxes.forEach(b2 => {
+            itemBoxes[b2]._itemActive = false;
+            itemBoxes[b2].isVisible = false;
+            if (itemBoxes[b2]._label) itemBoxes[b2]._label.isVisible = false;
+        });
+
+        // Every AI commits to a door now — mostly the right one, so the field
+        // mostly gets through and the wall stays a hazard rather than a pile-up.
+        for (const c of allCars) {
+            if (c === playerCar || isNet(c)) continue;
+            (c._gateChoice = c._gateChoice || {})[r.idx] = Math.random() < 0.72 ? r.correctIdx : Math.floor(Math.random() * n);
+        }
+        for (const c of allCars) if (c._gateRel) c._gateRel[r.idx] = undefined;
+    }
+
+    // The wall row the given car is driving towards, if any (used by the AI to
+    // line up on its door well before it arrives).
+    function gateRowAhead(car) {
+        for (const r of itemRows) {
+            if (r.kind !== "gate" || !r.gate || r.respawnTimer > 0) continue;
+            const rel = (car.pos.x - r.gate.pt.x) * r.gate.fx + (car.pos.z - r.gate.pt.z) * r.gate.fz;
+            if (rel < 0 && rel > -85) return r;
+        }
+        return null;
+    }
+
+    function resolveRow(r) {
+        r.boxes.forEach(b2 => {
+            itemBoxes[b2]._itemActive = false;
+            itemBoxes[b2].isVisible = false;
+            if (itemBoxes[b2]._label) itemBoxes[b2]._label.isVisible = false;
+        });
+        clearRowGate(r);
+        r.respawnTimer = 220;
+    }
+
+    function updateGateRows() {
+        for (const r of itemRows) {
+            if (r.kind !== "gate" || !r.gate || r.respawnTimer > 0) continue;
+            const g = r.gate;
+            for (const car of allCars) {
+                if (isNet(car)) continue;                 // ghosts judge their own wall
+                const rel = (car.pos.x - g.pt.x) * g.fx + (car.pos.z - g.pt.z) * g.fz;
+                const lat = (car.pos.x - g.pt.x) * g.px + (car.pos.z - g.pt.z) * g.pz;
+                if (!car._gateRel) car._gateRel = {};
+                const prev = car._gateRel[r.idx];
+                car._gateRel[r.idx] = rel;
+                if (prev === undefined || prev >= 0 || rel < 0) continue;
+                if (Math.abs(lat) > GATE_HALF + 6 || rel > 14) continue;   // nowhere near it
+
+                const j = g.doors.findIndex(c => Math.abs(lat - c) <= GATE_DOOR_W / 2 - 0.6);
+                if (j === r.correctIdx) {
+                    car.boostTimer = Math.max(car.boostTimer, 45);
+                    if (car === playerCar) {
+                        if (!playerCar.currentItem) { playerCar.currentItem = randomItem(); updateItemIndicator(); SoundManager.itemPickup(); }
+                        SoundManager.quizCorrect();
+                        showRoadFeedback("✅ Right door!", "#5dff7a");
+                    }
+                } else {
+                    // Wrong door, or straight into the wall: crash, see stars, and
+                    // come to on the far side so nobody is ever walled in.
+                    car.speed *= 0.05;
+                    car.stunTimer = Math.max(car.stunTimer, 60);
+                    car.dizzyTimer = Math.max(car.dizzyTimer, 95);
+                    damageRating(car, 45);
+                    const keepLat = Math.max(-15, Math.min(15, lat));
+                    car.pos.x = g.pt.x + g.fx * 5 + g.px * keepLat;
+                    car.pos.z = g.pt.z + g.fz * 5 + g.pz * keepLat;
+                    car._gateRel[r.idx] = 5;
+                    if (car === playerCar) {
+                        SoundManager.quizWrong();
+                        showRevenge(j < 0 ? "🚪 Crashed into the wall!" : "🚪 Wrong door — dizzy!");
+                        cameraShake = Math.max(cameraShake, 1.4);
+                    }
+                }
+                if (car === playerCar) { resolveRow(r); break; }
+            }
+        }
     }
 
     // ============================================================
@@ -4103,6 +4359,11 @@ const createScene = async function () {
 
     const traps = [];
     window._traps = traps; // exposed for tools/headless tests
+    window._trackYAt = (x, z) => trackYAt(x, z);
+    window._getItemBoxes = () => itemBoxes;
+    window._forceGateRow = (r) => { r.respawnTimer = 0; r.kind = "gate"; buildRowGate(r); };
+    window._creditHitForTest = creditHit;
+    window._useItemForTest = (item) => { if (item) playerCar.currentItem = item; useItem(playerCar); };
 
     function randomItem() {
         const r = Math.random();
@@ -4169,6 +4430,7 @@ const createScene = async function () {
                     damageRating(c, 60, true);
                     c.stunTimer = Math.max(c.stunTimer, 70);
                     c.dizzyTimer = Math.max(c.dizzyTimer, 95);
+                    creditHit(c, car, "lightning");
                     strikeLightning(c); // a bolt flashes down onto each rival
                 }
             });
@@ -4197,13 +4459,13 @@ const createScene = async function () {
             car.boostTimer = 240;
             if (audible) SoundManager.star();
         } else if (item === "oil") {
+            // Sit the slick ON the road: a fixed y buried it under every climb
+            // (Alpine Drop reaches y≈21), so the oil simply vanished on hills.
+            const ox = car.pos.x - Math.sin(car.rotY) * 4;
+            const oz = car.pos.z - Math.cos(car.rotY) * 4;
             const trap = {
                 type: "oil",
-                pos: {
-                    x: car.pos.x - Math.sin(car.rotY) * 4,
-                    y: 0.2,
-                    z: car.pos.z - Math.cos(car.rotY) * 4
-                },
+                pos: { x: ox, y: trackYAt(ox, oz) + 0.2, z: oz },
                 owner: car,
                 lifetime: 900
             };
@@ -4215,9 +4477,10 @@ const createScene = async function () {
             const sinR = Math.sin(car.rotY), cosR = Math.cos(car.rotY);
             for (let b = 0; b < 3; b++) {
                 const back = 3 + b * 2.2;
+                const bx = car.pos.x - sinR * back, bz = car.pos.z - cosR * back;
                 traps.push({
                     type: "bubble",
-                    pos: { x: car.pos.x - sinR * back, y: 0.7, z: car.pos.z - cosR * back },
+                    pos: { x: bx, y: trackYAt(bx, bz) + 0.7, z: bz },
                     owner: car,
                     lifetime: 720
                 });
@@ -4229,13 +4492,11 @@ const createScene = async function () {
         } else if (item === "fart") {
             // A lingering stink cloud right behind the kart — pursuers driving
             // into it can't see the road for a while.
+            const fx2 = car.pos.x - Math.sin(car.rotY) * 7;
+            const fz2 = car.pos.z - Math.cos(car.rotY) * 7;
             traps.push({
                 type: "fog",
-                pos: {
-                    x: car.pos.x - Math.sin(car.rotY) * 7,
-                    y: 1.2,
-                    z: car.pos.z - Math.cos(car.rotY) * 7
-                },
+                pos: { x: fx2, y: trackYAt(fx2, fz2) + 1.2, z: fz2 },
                 owner: car,
                 lifetime: 540
             });
@@ -4816,7 +5077,13 @@ const createScene = async function () {
             const futureTarget = trackPoints[(targetIdx + 3) % numPoints];
             const futureAngle = Math.atan2(futureTarget.z - targetPt.z, futureTarget.x - targetPt.x);
 
-            const offset = Math.sin(gameTime * 0.012 + i * 2.1) * 3;
+            let offset = Math.sin(gameTime * 0.012 + i * 2.1) * 3;
+            // Line up for the answer gate while it's still ahead, otherwise the AI
+            // would plough into a pillar every single lap.
+            const gRow = gateRowAhead(aiCar);
+            if (gRow && aiCar._gateChoice && aiCar._gateChoice[gRow.idx] != null) {
+                offset = gRow.gate.doors[aiCar._gateChoice[gRow.idx]] || 0;
+            }
             const raceLineX = targetPt.x - Math.sin(futureAngle) * offset;
             const raceLineZ = targetPt.z + Math.cos(futureAngle) * offset;
 
@@ -5257,6 +5524,9 @@ const createScene = async function () {
             if (b.life <= 0) { b.mesh.dispose(); lightningBolts.splice(i, 1); }
         }
 
+        // --- ANSWER GATES (question rows served as a wall of doors) ---
+        updateGateRows();
+
         // --- TORNADO UPDATES (wanders forward, flings & dizzies whoever it catches) ---
         for (let i = tornadoes.length - 1; i >= 0; i--) {
             const t = tornadoes[i];
@@ -5270,6 +5540,7 @@ const createScene = async function () {
                 const dz = car.pos.z - t.root.position.z;
                 const d = Math.sqrt(dx * dx + dz * dz);
                 if (d < 6.5 && d > 0.01) {
+                    if (gameTime - (car._lastTornadoBlame || -999) > 90) { car._lastTornadoBlame = gameTime; creditHit(car, t.owner, "tornado"); }
                     car.knockbackX += (dx / d) * 1.8;
                     car.knockbackZ += (dz / d) * 1.8;
                     car.speed *= 0.3;
@@ -5308,6 +5579,7 @@ const createScene = async function () {
                 const dz = proj.position.z - car.pos.z;
                 const distToCar = Math.sqrt(dx * dx + dz * dz);
                 if (distToCar < 1.1 + (car.radius || 1.25)) {
+                    creditHit(car, allCars[proj._shooterIdx], "fireball");
                     car.speed = -car.speed * 0.3;
                     car.rotY += (Math.random() - 0.5) * 3.0;
                     car.stunTimer = 60;
@@ -5418,6 +5690,7 @@ const createScene = async function () {
                     const fdz = car.pos.z - trap.pos.z;
                     if (fdx * fdx + fdz * fdz < 6.5 * 6.5) {
                         if (car === playerCar && car.fogTimer <= 0) SoundManager.fartSound();
+                        if (car.fogTimer <= 0) creditHit(car, trap.owner, "fog");
                         car.fogTimer = Math.max(car.fogTimer, 170);
                     }
                 }
@@ -5436,6 +5709,7 @@ const createScene = async function () {
                 const hitRadius = trap.type === "banana" ? 2.2 : trap.type === "bubble" ? 1.8 : 2.5;
 
                 if (dist < hitRadius) {
+                    creditHit(car, trap.owner, trap.type);
                     if (trap.type === "banana") {
                         car.speed *= 0.1;
                         car.rotY += (Math.random() - 0.5) * 3.5;
@@ -5537,9 +5811,11 @@ const createScene = async function () {
                 if (gap < bestGap) { bestGap = gap; near = row; }
             }
             if (near) {
-                if (roadQ._row !== near || roadQ._q !== near.questionText) {
-                    roadQ._row = near; roadQ._q = near.questionText;
-                    roadQText.textContent = near.questionText;
+                if (roadQ._row !== near || roadQ._q !== near.questionText || roadQ._kind !== near.kind) {
+                    roadQ._row = near; roadQ._q = near.questionText; roadQ._kind = near.kind;
+                    roadQText.textContent = near.kind === "gate"
+                        ? `${GATE_STYLES[near.styleIdx].cap} Drive through the RIGHT door — ${near.questionText}`
+                        : near.questionText;
                     roadQChoices.innerHTML = near.choiceTexts.map(c => `<span>${c}</span>`).join("");
                 }
                 roadQ.style.display = "block";

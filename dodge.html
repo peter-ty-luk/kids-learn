@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Match Dodge Ball</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; color: #243042; min-height: 100vh; }
+    #app { max-width: 1020px; margin: 0 auto; padding: 14px 12px 40px; position: relative; z-index: 1; }
+    h1 { text-align: center; font-size: 30px; margin: 8px 0 2px; }
+    .subtitle { text-align: center; color: #6a7790; margin-bottom: 14px; font-size: 14px; }
+    .card { background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 10px 30px rgba(60,80,140,0.12); }
+    .label { font-weight: 700; margin: 12px 0 6px; }
+    .opts { display: flex; gap: 8px; flex-wrap: wrap; }
+    .opt { border: 2px solid #d6e0f5; border-radius: 14px; padding: 9px 14px; cursor: pointer; user-select: none; font-weight: 600; background: #f7faff; }
+    .opt.on { background: #dcecff; border-color: #6aa3f0; color: #1b4a86; }
+    .opt.off { opacity: 0.4; }
+    .start-row { text-align: center; margin-top: 16px; }
+    .btn { font-size: 17px; font-family: inherit; border-radius: 12px; padding: 10px 20px; border: none; background: #2fbf71; color: #fff; font-weight: 700; cursor: pointer; }
+    .btn.ghost { background: #fff; color: #43386e; border: 2px solid #d9d2f0; }
+    .btn:disabled { opacity: 0.55; cursor: default; }
+
+    /* ---------- playing: the court owns the whole window ----------
+       Everything that used to sit above and below the canvas (hearts, clock,
+       carry slots, buttons) is now floated ON the court, so not one pixel of
+       the window is spent on page chrome. */
+    #game { display: none; }
+    body.playing { overflow: hidden; }
+    body.playing #app { max-width: none; margin: 0; padding: 0; }
+    body.playing h1, body.playing .subtitle { display: none; }
+    .stage { position: relative; }
+    body.playing .stage { position: fixed; inset: 0; }
+    #db-canvas { width: 100%; height: 100%; display: block; background: #e6d2ac;
+      touch-action: none; outline: none; }
+    body:not(.playing) #db-canvas { aspect-ratio: 16 / 9; border-radius: 14px; }
+    #float-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    #float-layer span { position: absolute; font-weight: 900; font-size: clamp(17px, 1.5vw, 26px); color: #fff;
+      text-shadow: 0 2px 4px rgba(40,25,10,0.75), 0 0 2px rgba(40,25,10,0.9); white-space: nowrap; }
+
+    /* HUD floats across the top of the court */
+    #hud { position: absolute; top: 0; left: 0; right: 0; z-index: 3;
+      display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap;
+      padding: 8px 10px; pointer-events: none; }
+    .hudbox { background: rgba(255,255,255,0.9); border-radius: 12px; padding: 5px 12px; font-weight: 800;
+      box-shadow: 0 4px 14px rgba(30,40,80,0.25); font-size: clamp(14px, 1.5vw, 22px); backdrop-filter: blur(3px); }
+    .hudbox small { font-size: 0.72em; color: #7a86a0; }
+    .snd { font-family: inherit; line-height: 1; cursor: pointer; border: 2px solid #d6e0f5; pointer-events: auto; }
+
+    /* carry slots + actions float across the bottom */
+    #tray { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+      display: flex; gap: 8px; align-items: stretch; justify-content: center; flex-wrap: wrap;
+      padding: 8px 10px; pointer-events: none; }
+    #tray .btn { pointer-events: auto; box-shadow: 0 4px 14px rgba(30,40,80,0.3); }
+    .slotbox { min-width: clamp(96px, 13vw, 210px); background: rgba(255,255,255,0.9); border: 3px dashed #cbd6ee;
+      border-radius: 14px; padding: 5px 12px; text-align: center; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; font-size: clamp(14px, 1.5vw, 22px);
+      box-shadow: 0 4px 14px rgba(30,40,80,0.22); backdrop-filter: blur(3px); }
+    .slotbox.filled { border-style: solid; border-color: #6aa3f0; background: rgba(238,246,255,0.95); }
+    .slotbox.ball { border-color: #2fbf71; background: rgba(232,251,241,0.95); }
+    #act-throw, #act-drop, #quit-btn { font-size: clamp(14px, 1.4vw, 20px); padding: 8px 16px; }
+
+    /* message + control hint sit just under the HUD, out of the way */
+    #msg { position: absolute; top: 48px; left: 0; right: 0; z-index: 2; text-align: center;
+      font-weight: 800; font-size: clamp(13px, 1.4vw, 20px); color: #fff; pointer-events: none;
+      text-shadow: 0 2px 5px rgba(20,25,45,0.85), 0 0 3px rgba(20,25,45,0.9); padding: 0 12px; }
+    .hint { position: absolute; bottom: 52px; left: 0; right: 0; z-index: 2; text-align: center;
+      color: rgba(255,255,255,0.92); font-size: clamp(11px, 1.1vw, 15px); pointer-events: none;
+      text-shadow: 0 2px 4px rgba(20,25,45,0.8); padding: 0 12px; }
+    body:not(.playing) .hint { position: static; color: #8a93a8; text-shadow: none; margin-top: 6px; }
+
+    /* survival: the walls-closing-in alarm */
+    #shrink-alarm { position: absolute; top: 50%; left: 0; right: 0; transform: translateY(-50%); z-index: 4;
+      display: none; text-align: center; font-weight: 900; font-size: clamp(26px, 6vw, 74px); color: #fff;
+      letter-spacing: 1px; pointer-events: none; text-shadow: 0 4px 16px rgba(0,0,0,0.7); }
+    #shrink-alarm.show { display: block; animation: alarmPulse 0.8s ease-in-out infinite; }
+    #shrink-alarm.urgent { color: #ffd0d0; animation-duration: 0.34s; }
+    @keyframes alarmPulse { 0%,100% { opacity: 0.35; transform: translateY(-50%) scale(0.97); } 50% { opacity: 1; transform: translateY(-50%) scale(1.06); } }
+    /* a red edge glow while the alarm runs */
+    #shrink-alarm.show::before { content: ''; position: fixed; inset: 0; pointer-events: none;
+      box-shadow: inset 0 0 min(16vw, 150px) rgba(255,40,60,0.55); }
+
+    .overlay { position: absolute; inset: 0; background: rgba(12,18,38,0.82); display: none; flex-direction: column;
+      align-items: center; justify-content: center; color: #fff; text-align: center; padding: 18px; z-index: 6; }
+    .overlay.show { display: flex; }
+    .overlay h2 { font-size: clamp(22px, 5vw, 44px); margin: 6px 0 12px; }
+    .back-row { text-align: center; margin-top: 12px; }
+    a.plain { color: #4f86f7; font-weight: 600; text-decoration: none; }
+  </style>
+  <link rel="stylesheet" href="kids.css">
+</head>
+<body>
+  <div id="app">
+    <h1>🤾 Match Dodge Ball</h1>
+    <div class="subtitle">Grab two things that go together — they become a ball. Then throw it at the other team!</div>
+
+    <!-- SETUP -->
+    <div id="setup" class="card">
+      <div class="label">Teams</div>
+      <div class="opts" id="opt-size">
+        <div class="opt" data-size="1">1 vs 1</div>
+        <div class="opt on" data-size="2">2 vs 2</div>
+        <div class="opt" data-size="3">3 vs 3</div>
+      </div>
+      <div class="label">Court</div>
+      <div class="opts" id="opt-court">
+        <div class="opt on" data-court="official">🏟 Official (two halves)</div>
+        <div class="opt" data-court="free">🌪 Free-for-all (run anywhere)</div>
+        <div class="opt" data-court="survival">🧱 Survival (walls close in!)</div>
+      </div>
+      <div class="hint" style="text-align:left;margin-top:4px">Survival has no clock — it ends when one team is wiped out, and the arena shrinks every minute.</div>
+      <div class="label">Theme</div>
+      <div class="opts" id="opt-theme"></div>
+      <div class="label">What to match</div>
+      <div class="opts" id="opt-content"></div>
+      <div class="label">AI level</div>
+      <div class="opts" id="opt-ai">
+        <div class="opt" data-ai="easy">🙂 Easy</div>
+        <div class="opt on" data-ai="normal">😼 Normal</div>
+        <div class="opt" data-ai="tough">😈 Tough</div>
+      </div>
+      <div class="start-row"><button id="start-btn" class="btn">Start Game ▶</button></div>
+      <div class="back-row"><a class="plain" href="index.html">← Back to the games</a></div>
+    </div>
+
+    <!-- GAME -->
+    <div id="game">
+      <div class="stage">
+        <canvas id="db-canvas"></canvas>
+        <div id="float-layer"></div>
+        <div id="hud">
+          <div class="hudbox">🔵 <span id="hud-blue">0</span> <small>hearts</small></div>
+          <div class="hudbox">⏱ <span id="hud-time">2:00</span></div>
+          <div class="hudbox" id="power-box" style="display:none">✨ <span id="power-name"></span> <small><span id="power-left">3</span> throws</small></div>
+          <button class="hudbox snd" id="sound-btn" title="Music &amp; sound on/off">🔊</button>
+          <div class="hudbox">🔴 <span id="hud-red">0</span> <small>hearts</small></div>
+        </div>
+        <div id="msg"></div>
+        <div id="shrink-alarm"></div>
+        <div class="hint" id="ctl-hint">Move: WASD / arrows · Throw: Space · Drop: Q — walk over cards to pick them up (2 that match = a ball!)</div>
+        <div id="tray">
+          <div class="slotbox" id="slot-0">empty</div>
+          <div class="slotbox" id="slot-1">empty</div>
+          <button class="btn" id="act-throw" disabled>🥎 Throw!</button>
+          <button class="btn ghost" id="act-drop">Drop</button>
+          <button class="btn ghost" id="quit-btn">Leave</button>
+        </div>
+        <div class="overlay" id="end-overlay">
+          <h2 id="end-title">🏆</h2>
+          <div id="end-sub" style="font-size:17px;margin-bottom:14px"></div>
+          <div><button class="btn" id="end-again">Play Again</button>
+          <button class="btn ghost" id="end-menu">Menu</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="lib/babylon.js"></script>
+  <script defer src="dodge.js"></script>
+</body>
+</html>

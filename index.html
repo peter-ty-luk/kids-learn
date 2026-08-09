@@ -159,6 +159,26 @@
             white-space: nowrap;
         }
 
+        /* Names whoever just knocked you about, so you know who to chase. */
+        #revenge-banner {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: clamp(18px, 2.4vw, 30px);
+            font-weight: 800;
+            color: #fff;
+            background: rgba(190, 30, 60, 0.82);
+            border: 3px solid rgba(255,255,255,0.9);
+            border-radius: 16px;
+            padding: 7px 18px;
+            text-shadow: 1px 2px 5px rgba(0,0,0,0.6);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+
         #item-indicator {
             width: 120px; height: 120px;
             background: rgba(0,0,0,0.55);
@@ -956,7 +976,10 @@
                 <a class="lobby-btn" id="match-btn" href="match.html" style="display:inline-block;text-decoration:none;">🃏 Pair Match</a>
                 <a class="lobby-btn" id="maze-btn" href="maze.html" style="display:inline-block;text-decoration:none;">🧩 Pair Maze</a>
                 <a class="lobby-btn" id="globe-btn" href="globe.html" style="display:inline-block;text-decoration:none;">🌍 Globe Quiz</a>
+                <a class="lobby-btn" id="tower-btn" href="tower.html" style="display:inline-block;text-decoration:none;">🏰 Tower Quiz Defense</a>
+                <a class="lobby-btn" id="dodge-btn" href="dodge.html" style="display:inline-block;text-decoration:none;">🤾 Match Dodge Ball</a>
                 <a class="lobby-btn" id="practice-btn" href="test.html" style="display:inline-block;text-decoration:none;">📝 Practice Test</a>
+                <a class="lobby-btn" id="party-btn" href="party.html" style="display:inline-block;text-decoration:none;">🎉 Party Mode</a>
             </div>
         </div>
 
@@ -1036,6 +1059,8 @@
 
     <div id="countdown"></div>
     <div id="road-feedback"></div>
+    <!-- "who just hit me" — stays up long enough to plan a revenge -->
+    <div id="revenge-banner"></div>
 
     <div id="instructions">WASD / Arrow Keys to drive &nbsp;|&nbsp; Space to use item &nbsp;|&nbsp; Read the question, grab the box with the right answer!</div>
 

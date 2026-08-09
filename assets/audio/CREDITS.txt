@@ -18,6 +18,22 @@ Background music (assets/audio/music/):
   09-fast.mp3                                 Fast
   10-sport.mp3                                Sport
 
+Higher-energy music added 2026-08-10 (the ten above are all mid-tempo racing
+beds, measured at 64-120 BPM, which read as flat under a dodgeball match or a
+tower battle — see tools/music-energy.mjs):
+  11-retro-arcade-game-music.mp3              Retro Arcade Game Music
+  12-game-level-pixel-quest-loop.mp3          Game Level Pixel Quest Loop
+  13-funky-friday-night-chiptune-.mp3         Funky Friday Night (chiptune)
+  14-zt-byte-blast.mp3                        ZT - Byte Blast
+  15-motivation-epic-rock.mp3                 Motivation Epic Rock
+  16-energetic-action-sport.mp3               Energetic Action Sport
+  17-action-sport-music.mp3                   Action Sport Music
+  18-indie-rock-energetic.mp3                 Indie Rock Energetic
+  19-rock-rock-music.mp3                      Rock - Rock Music
+  20-indie-rock-hype.mp3                      Indie Rock Hype
+  21-epic-cinematic-bold-drums.mp3            Epic Cinematic Bold Drums
+  22-epic.mp3                                 Epic
+
 Sound effects (assets/audio/sfx/):
   engine.mp3          Engine
   boost.mp3           Near Miss Swing Whoosh 3

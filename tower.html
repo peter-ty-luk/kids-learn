@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Tower Quiz Defense</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, Arial, sans-serif; color: #243042; min-height: 100vh; }
+    #app { max-width: 1020px; margin: 0 auto; padding: 14px 12px 40px; position: relative; z-index: 1; }
+    h1 { text-align: center; font-size: 30px; margin: 8px 0 2px; }
+    .subtitle { text-align: center; color: #6a7790; margin-bottom: 14px; font-size: 14px; }
+    .card { background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 10px 30px rgba(60,80,140,0.12); }
+    .label { font-weight: 700; margin: 12px 0 6px; }
+    .opts { display: flex; gap: 8px; flex-wrap: wrap; }
+    .opt { border: 2px solid #d6e0f5; border-radius: 14px; padding: 9px 14px; cursor: pointer; user-select: none; font-weight: 600; background: #f7faff; }
+    .opt.on { background: #dcecff; border-color: #6aa3f0; color: #1b4a86; }
+    .start-row { text-align: center; margin-top: 16px; }
+    .btn { font-size: 17px; font-family: inherit; border-radius: 12px; padding: 10px 20px; border: none; background: #2fbf71; color: #fff; font-weight: 700; cursor: pointer; }
+    .btn.ghost { background: #fff; color: #43386e; border: 2px solid #d9d2f0; }
+    .btn:disabled { opacity: 0.55; cursor: default; }
+
+    /* ---------- playing: the battle fills the window ----------
+       #game becomes a full-window column: the battlefield takes every pixel
+       left over after the compact question + shop bar at the bottom, and the
+       HUD floats on the field rather than taking a row of its own. Nothing
+       scrolls. */
+    #game { display: none; }
+    body.playing { overflow: hidden; }
+    body.playing #app { max-width: none; margin: 0; padding: 0; }
+    body.playing h1, body.playing .subtitle { display: none; }
+    body.playing #game { position: fixed; inset: 0; display: flex; flex-direction: column; }
+    .stage { position: relative; }
+    body.playing .stage { flex: 1 1 auto; min-height: 0; }
+    #td-canvas { width: 100%; height: 100%; display: block; background: #8cc7f5; touch-action: none; outline: none; }
+    body:not(.playing) #td-canvas { aspect-ratio: 24 / 13; border-radius: 14px; height: auto; }
+    /* crisp floating "+14 🪙" labels projected over the 3D field */
+    #float-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    #float-layer span { position: absolute; font-weight: 900; font-size: clamp(15px, 1.4vw, 24px); color: #fff;
+      text-shadow: 0 2px 4px rgba(20,30,10,0.75), 0 0 2px rgba(20,30,10,0.9); white-space: nowrap; }
+    #hud { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
+    body.playing #hud { position: absolute; top: 0; left: 0; right: 0; z-index: 3; padding: 8px 10px; pointer-events: none; }
+    .hudbox { background: rgba(255,255,255,0.92); border-radius: 12px; padding: 5px 12px; font-weight: 800;
+      box-shadow: 0 4px 14px rgba(30,50,20,0.25); font-size: clamp(13px, 1.4vw, 21px); backdrop-filter: blur(3px); }
+    .hudbox small { color: #8a93a8; font-weight: 700; font-size: 0.72em; }
+    .snd { font-family: inherit; line-height: 1; cursor: pointer; border: 2px solid #d6e0f5; pointer-events: auto; }
+    #below { display: grid; grid-template-columns: 1fr 340px; gap: 12px; margin-top: 12px; align-items: start; }
+    /* the bottom bar: fixed compact height, both panels scroll internally if
+       they ever need to, so the battlefield never gets squeezed off screen */
+    body.playing #below { flex: 0 0 auto; margin: 0; gap: 8px; padding: 8px;
+      grid-template-columns: 1fr minmax(260px, 30vw); align-items: stretch;
+      max-height: min(34vh, 300px); }
+    body.playing #below .card { padding: 10px 12px; border-radius: 14px; overflow: auto; }
+    /* Only the setup-sized layout stacks. While playing, stacking would eat the
+       whole screen on a portrait tablet, so the two panels stay side by side. */
+    @media (max-width: 860px) { body:not(.playing) #below { grid-template-columns: 1fr; } }
+    @media (max-width: 860px) { body.playing #below { grid-template-columns: 1fr minmax(180px, 34vw); } }
+
+    /* question panel */
+    #qpanel .difftabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    body.playing #qpanel .difftabs { margin-bottom: 6px; }
+    .dtab { flex: 1; text-align: center; border-radius: 12px; padding: 8px 4px; font-weight: 800; cursor: pointer; border: 2px solid transparent; font-size: clamp(12px, 1.2vw, 17px); user-select: none; }
+    body.playing .dtab { padding: 5px 4px; }
+    .dtab[data-d="1"] { background: #e7f9ee; color: #1f7a44; } .dtab[data-d="2"] { background: #fff6e0; color: #92600a; } .dtab[data-d="3"] { background: #ffe9ec; color: #b3324b; }
+    .dtab.on { border-color: currentColor; }
+    #q-prompt { font-size: clamp(15px, 1.6vw, 25px); font-weight: 800; min-height: 44px; margin: 4px 0 10px; }
+    body.playing #q-prompt { min-height: 0; margin: 2px 0 7px; }
+    #q-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    #q-choices button { font-family: inherit; font-size: clamp(14px, 1.5vw, 22px); font-weight: 700; border: 2px solid #d6e0f5; background: #f7faff; border-radius: 12px; padding: 10px 8px; cursor: pointer; min-height: 46px; }
+    body.playing #q-choices button { padding: 7px 8px; min-height: 40px; }
+    #q-choices button:hover { background: #eaf2ff; }
+    #q-choices button.good { background: #d9f5e3 !important; border-color: #2fbf71 !important; }
+    #q-choices button.bad { background: #ffe3e6 !important; border-color: #ff6b81 !important; }
+    #q-feedback { min-height: 22px; font-weight: 800; margin-top: 8px; font-size: clamp(12px, 1.2vw, 18px); }
+    body.playing #q-feedback { min-height: 0; margin-top: 5px; }
+
+    /* shop */
+    #shop .shoprow { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .buy { flex: 1; min-width: 82px; font-family: inherit; border: 2px solid #d6e0f5; background: #f7faff; border-radius: 14px; padding: 8px 6px; cursor: pointer; text-align: center; font-weight: 700; font-size: clamp(11px, 1.1vw, 16px); }
+    body.playing .buy { padding: 5px 5px; }
+    .buy .big { font-size: clamp(19px, 2vw, 30px); display: block; }
+    .buy .cost { color: #b8860b; font-weight: 800; }
+    .buy .tip { color: #7a86a0; font-weight: 600; font-size: 0.82em; line-height: 1.2; display: inline-block; }
+    body.playing .buy .tip { display: none; }          /* the tips are for the first read, not the heat of battle */
+    .buy:disabled { opacity: 0.45; cursor: default; }
+    .buy.sel { border-color: #6aa3f0; background: #dcecff; }
+    #shop-hint { color: #8a93a8; font-size: clamp(11px, 1.1vw, 16px); min-height: 18px; margin-top: 4px; }
+    body.playing #shop-hint { min-height: 0; }
+    body.playing #shop .start-row { margin-top: 5px; }
+    body.playing #quit-btn { padding: 5px 14px; font-size: clamp(12px, 1.2vw, 17px); }
+
+    /* overlays */
+    .overlay { position: absolute; inset: 0; background: rgba(12,18,38,0.82); border-radius: 16px; display: none; flex-direction: column; align-items: center; justify-content: center; color: #fff; text-align: center; padding: 18px; z-index: 5; }
+    .overlay.show { display: flex; }
+    .overlay h2 { font-size: clamp(22px, 5vw, 34px); margin: 6px 0 12px; }
+    /* floating coin/damage text uses canvas — no DOM needed */
+    .back-row { text-align: center; margin-top: 12px; }
+    a.plain { color: #4f86f7; font-weight: 600; text-decoration: none; }
+  </style>
+  <link rel="stylesheet" href="kids.css">
+</head>
+<body>
+  <div id="app">
+    <h1>🏰 Tower Quiz Defense</h1>
+    <div class="subtitle">Answer questions to earn coins — spend them on your army or your towers!</div>
+
+    <!-- SETUP -->
+    <div id="setup" class="card">
+      <div class="label">Your side</div>
+      <div class="opts" id="opt-role">
+        <div class="opt on" data-role="defend">🛡 Defender (build towers)</div>
+        <div class="opt" data-role="attack">⚔️ Attacker (send troops)</div>
+      </div>
+      <div class="label">AI opponent</div>
+      <div class="opts" id="opt-ai">
+        <div class="opt" data-ai="chill">🙂 Chill</div>
+        <div class="opt on" data-ai="normal">😼 Normal</div>
+        <div class="opt" data-ai="tough">😈 Tough</div>
+      </div>
+      <div class="label">Battle length</div>
+      <div class="opts" id="opt-mins">
+        <div class="opt" data-mins="2">2 min</div>
+        <div class="opt on" data-mins="3">3 min</div>
+        <div class="opt" data-mins="4">4 min</div>
+      </div>
+      <div class="start-row"><button id="start-btn" class="btn" disabled>Loading questions…</button></div>
+      <div class="back-row"><a class="plain" href="index.html">← Back to the games</a></div>
+    </div>
+
+    <!-- GAME -->
+    <div id="game">
+      <div class="stage">
+        <canvas id="td-canvas"></canvas>
+        <div id="float-layer"></div>
+        <div id="hud">
+          <div class="hudbox">🪙 <span id="hud-coins">0</span> <small>your coins</small></div>
+          <div class="hudbox">🏰 <span id="hud-base">300</span> <small>base HP</small></div>
+          <div class="hudbox">⏱ <span id="hud-time">3:00</span></div>
+          <div class="hudbox">🤖 <span id="hud-ai">0</span> <small>AI coins</small></div>
+          <button class="hudbox snd" id="sound-btn" title="Music &amp; sound on/off">🔊</button>
+          <button class="hudbox snd" id="quit-btn" title="Leave the battle">🚪</button>
+        </div>
+        <div class="overlay" id="end-overlay">
+          <h2 id="end-title">🏆</h2>
+          <div id="end-sub" style="font-size:17px;margin-bottom:14px"></div>
+          <div><button class="btn" id="end-again">Play Again</button>
+          <button class="btn ghost" id="end-menu">Menu</button></div>
+        </div>
+      </div>
+      <div id="below">
+        <div class="card" id="qpanel">
+          <div class="difftabs">
+            <div class="dtab" data-d="1">🟢 Easy +<span id="rw1">8</span>🪙</div>
+            <div class="dtab on" data-d="2">🟡 Medium +<span id="rw2">14</span>🪙</div>
+            <div class="dtab" data-d="3">🔴 Hard +<span id="rw3">22</span>🪙</div>
+          </div>
+          <div id="q-prompt">—</div>
+          <div id="q-choices"></div>
+          <div id="q-feedback"></div>
+        </div>
+        <div class="card" id="shop">
+          <div class="label" style="margin-top:0" id="shop-title">Build</div>
+          <div class="shoprow" id="shop-items"></div>
+          <div class="shoprow" id="shop-upgrades"></div>
+          <div id="shop-hint"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="lib/babylon.js"></script>
+  <script defer src="tower.js"></script>
+</body>
+</html>
